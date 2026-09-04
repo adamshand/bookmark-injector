@@ -1,34 +1,31 @@
 {
-  "name": "linkding-injector",
-  "version": "1.3.11",
-  "description": "Injects search results from the linkding bookmark service into search pages like google and duckduckgo",
+  "name": "bookmark-injector",
+  "version": "1.4.1",
+  "description": "Adds results from Linkding and Readeck libraries to web search pages",
   "license": "MIT",
-  "author": "Jakob Essbüchl",
+  "type": "module",
+  "author": "Adam Shand and contributors",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fivefold/linkding-injector.git"
+    "url": "git+https://github.com/adamshand/bookmark-injector.git"
   },
   "bugs": {
-    "url": "https://github.com/fivefold/linkding-injector/issues"
+    "url": "https://github.com/adamshand/bookmark-injector/issues"
   },
-  "homepage": "https://github.com/fivefold/linkding-injector#readme",
+  "homepage": "https://github.com/adamshand/bookmark-injector#readme",
   "scripts": {
     "build": "rollup -c && sass scss/theme.scss build/searchInjection.css",
-    "dev": "rollup -c -w && sass scss/theme.scss build/searchInjection.css"
-  },
-  "dependencies": {
-    "@rollup/plugin-commonjs": "^28.0.3",
-    "@rollup/plugin-node-resolve": "^16.0.1",
-    "@rollup/plugin-terser": "^0.4.4",
-    "rollup": ">=4.59.2",
-    "rollup-plugin-svelte": "^7.2.2",
-    "spectre.css": "^0.5.9",
-    "svelte": "^4.2.19"
+    "dev": "rollup -c -w && sass scss/theme.scss build/searchInjection.css",
+    "test": "node --test",
+    "hooks:install": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
-    "postcss": ">=8.5.23",
-    "prettier": "^2.2.1",
-    "tough-cookie": ">=4.1.3",
-    "web-ext": "^9.1.0"
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-terser": "^1.0.0",
+    "rollup": ">=4.59.2",
+    "rollup-plugin-svelte": "^7.2.2",
+    "sass": "^1.104.0",
+    "svelte": "^4.2.19",
+    "web-ext": "^10.6.0"
   }
 }

@@ -14,4 +14,4 @@ Examples that *don't* work:
 
 Also, nothing might be injected if you don't use the default "simple" theme.
 
-If you have the correct URL, you see a linkding injector box in other supported search engines (e.g. google) but not in your SearX instance, please see if someone already [mentioned your issue](https://github.com/Fivefold/linkding-injector/issues) on github and if not, [create an issue](https://github.com/Fivefold/linkding-injector/issues/new/choose).
+If the Bookmark Injector panel appears on other supported search engines but not on your SearX instance, check the [known issues](https://github.com/adamshand/bookmark-injector/issues) or [report it](https://github.com/adamshand/bookmark-injector/issues/new).

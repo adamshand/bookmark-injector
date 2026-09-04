@@ -1,68 +1,40 @@
 <script>
-  import { getConfiguration, saveConfiguration } from "./configuration";
-  import { LinkdingApi } from "./linkding";
+  import {
+    getConfiguration,
+    normalizeConfiguration,
+    saveConfiguration,
+  } from "./configuration.js";
+  import { LinkdingApi } from "./linkding.js";
+  import { ReadeckApi } from "./readeck.js";
 
-  let baseUrl;
-  let token;
-  let resultNum;
-  let showLogo;
-  let openLinkType;
-  let themeDuckduckgo;
-  let themeGoogle;
-  let themeBrave;
-  let themeSearx;
-  let themeKagi;
-  let themeQwant;
-  let isSuccess = false;
-  let isError = false;
-  let errorMessage = "";
-  let errorStatus = null;
+  let config = normalizeConfiguration();
+  let connection;
 
-  async function init() {
-    const config = await getConfiguration();
-    baseUrl = config.baseUrl;
-    token = config.token;
-    resultNum = config.resultNum;
-    showLogo = config.showLogo;
-    openLinkType = config.openLinkType;
-    themeDuckduckgo = config.themeDuckduckgo;
-    themeGoogle = config.themeGoogle;
-    themeBrave = config.themeBrave;
-    themeSearx = config.themeSearx;
-    themeKagi = config.themeKagi;
-    themeQwant = config.themeQwant;
-  }
-
-  init();
+  getConfiguration().then((saved) => (config = saved));
 
   async function handleSubmit() {
-    const config = {
-      baseUrl,
-      token,
-      resultNum,
-      showLogo,
-      openLinkType,
-      themeDuckduckgo,
-      themeGoogle,
-      themeBrave,
-      themeSearx,
-      themeKagi,
-      themeQwant,
-    };
+    try {
+      const tests = [];
+      if (config.linkding.enabled) {
+        tests.push(new LinkdingApi(config.linkding).testConnection());
+      }
+      if (config.readeck.enabled) {
+        tests.push(new ReadeckApi(config.readeck).testConnection());
+      }
 
-    const testResult = await new LinkdingApi(config).testConnection(config);
-
-    if (testResult.success) {
-      await saveConfiguration(config);
-      isError = false;
-      isSuccess = true;
-      errorMessage = "";
-      errorStatus = null;
-    } else {
-      isSuccess = false;
-      isError = true;
-      errorMessage = testResult.message;
-      errorStatus = testResult.status;
+      const results = await Promise.all(tests);
+      connection = results.find((result) => !result.success) || {
+        success: true,
+        status: 200,
+        message: "Connection successful",
+      };
+      if (connection.success) await saveConfiguration(config);
+    } catch (error) {
+      connection = {
+        success: false,
+        status: null,
+        message: error instanceof Error ? error.message : "Connection failed",
+      };
     }
   }
 </script>
@@ -70,59 +42,66 @@
 <h6>Configuration</h6>
 <div class="divider" />
 <p>
-  This is a companion extension for the <a
-    href="https://github.com/sissbruecker/linkding">linkding</a
-  > bookmark service. Before you can start using it you have to configure some basic
-  settings, so that the extension can communicate with your linkding installation.
+  Search Linkding, Readeck, or both whenever you use a supported search engine.
+  Credentials stay in extension storage and are never sent to search pages.
 </p>
 <form class="form" on:submit|preventDefault={handleSubmit}>
+  <h6>Linkding</h6>
   <div class="form-group">
-    <label class="form-label" for="input-base-url"
-      >Base URL <span class="text-error">*</span></label
-    >
-    <input
-      class="form-input"
-      type="text"
-      id="input-base-url"
-      placeholder="https://linkding.mydomain.com"
-      bind:value={baseUrl}
-    />
-    <div class="form-input-hint">
-      The base URL of your linkding installation, <b>without</b> the
-      <samp>/bookmark</samp> path or a trailing slash
-    </div>
-  </div>
-  <div class="form-group">
-    <label class="form-label" for="input-token"
-      >API Authentication Token <span class="text-error">*</span></label
-    >
-    <input
-      class="form-input"
-      type="password"
-      id="input-token"
-      placeholder="Token"
-      bind:value={token}
-    />
-    <div class="form-input-hint">
-      Used to authenticate against the linkding API. You can find this on your
-      linkding settings page.
-    </div>
-  </div>
-  <div class="form-group">
-    <label class="form-label" for="input-search-num"
-      >Maximum number of search results
+    <label class="form-checkbox">
+      <input type="checkbox" bind:checked={config.linkding.enabled} />
+      <i class="form-icon"></i> Search Linkding
     </label>
+  </div>
+  <div class="form-group">
+    <label class="form-label" for="input-linkding-url">Base URL</label>
+    <input class="form-input" type="url" id="input-linkding-url"
+      placeholder="https://linkding.example" bind:value={config.linkding.baseUrl} />
+  </div>
+  <div class="form-group">
+    <label class="form-label" for="input-linkding-token">API token</label>
+    <input class="form-input" type="password" id="input-linkding-token"
+      placeholder="Token" bind:value={config.linkding.token} />
+  </div>
+  <div class="form-group">
+    <label class="form-label" for="input-search-num">Maximum results</label>
     <input
       class="form-input"
       type="number"
       id="input-search-num"
-      placeholder="10"
-      bind:value={resultNum}
+      min="1"
+      bind:value={config.resultNum}
     />
     <div class="form-input-hint">
-      The maximum number of search results. High numbers could lead to worse
-      performance.
+      Applies to Linkding. Readeck is always limited to its ten best matches.
     </div>
+  </div>
+
+  <div class="divider" />
+  <h6>Readeck</h6>
+  <div class="form-group">
+    <label class="form-checkbox">
+      <input type="checkbox" bind:checked={config.readeck.enabled} />
+      <i class="form-icon"></i> Search Readeck
+    </label>
+  </div>
+  <div class="form-group">
+    <label class="form-label" for="input-readeck-url">Base URL</label>
+    <input class="form-input" type="url" id="input-readeck-url"
+      placeholder="https://readeck.example" bind:value={config.readeck.baseUrl} />
+    <div class="form-input-hint">HTTPS is required.</div>
+  </div>
+  <div class="form-group">
+    <label class="form-label" for="input-readeck-token">Read-only API token</label>
+    <input class="form-input" type="password" id="input-readeck-token"
+      placeholder="Token" bind:value={config.readeck.token} />
+    <div class="form-input-hint">Create a token limited to bookmark read access.</div>
+  </div>
+  <div class="form-group">
+    <label class="form-checkbox">
+      <input type="checkbox" bind:checked={config.readeck.enrichAnnotations} />
+      <i class="form-icon"></i> Show highlights and notes for the first 10 matches
+    </label>
   </div>
   <div class="accordion">
     <input type="checkbox" id="accordion-1" name="accordion-checkbox" hidden />
@@ -134,21 +113,11 @@
       <div class="form-group">
         <div class="form-label">Default open link type</div>
         <label class="form-radio">
-          <input
-            type="radio"
-            id="input-link-type"
-            bind:group={openLinkType}
-            value="newTab"
-          />
+          <input type="radio" bind:group={config.openLinkType} value="newTab" />
           <i class="form-icon" />Open links in a new tab (default)
         </label>
         <label class="form-radio">
-          <input
-            type="radio"
-            id="input-link-type"
-            bind:group={openLinkType}
-            value="sameTab"
-          />
+          <input type="radio" bind:group={config.openLinkType} value="sameTab" />
           <i class="form-icon" />Open links in the same tab
         </label>
       </div>
@@ -156,13 +125,14 @@
         <label class="form-checkbox">
           <input
             type="checkbox"
-            bind:checked={showLogo}
+            bind:checked={config.showLogo}
           />
         <i class="form-icon"></i>
         <span>Show logo</span>
       </label>
-      <div class="form-input-hint">
-        Shows or hides the extension logo on the results title.
+        <div class="form-input-hint">
+          Shows or hides the extension logo on the results title.
+        </div>
       </div>
       <div class="form-group p-relative clearfix">
         <div class="form-label">Theme of injection box</div>
@@ -171,7 +141,7 @@
           <input
             type="radio"
             id="google-light"
-            bind:group={themeGoogle}
+            bind:group={config.themeGoogle}
             value="light"
           />
           <i class="form-icon" />light
@@ -180,7 +150,7 @@
           <input
             type="radio"
             id="google-dark"
-            bind:group={themeGoogle}
+            bind:group={config.themeGoogle}
             value="dark"
           />
           <i class="form-icon" />dark
@@ -189,7 +159,7 @@
           <input
             type="radio"
             id="google-auto"
-            bind:group={themeGoogle}
+            bind:group={config.themeGoogle}
             value="auto"
           />
           <i class="form-icon" />auto (default)
@@ -198,75 +168,75 @@
       <div class="form-group p-relative clearfix">
         <div class="float-left form-label">DuckDuckGo</div>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeDuckduckgo} value="light" />
+          <input type="radio" bind:group={config.themeDuckduckgo} value="light" />
           <i class="form-icon" />light
         </label>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeDuckduckgo} value="dark" />
+          <input type="radio" bind:group={config.themeDuckduckgo} value="dark" />
           <i class="form-icon" />dark
         </label>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeDuckduckgo} value="auto" />
+          <input type="radio" bind:group={config.themeDuckduckgo} value="auto" />
           <i class="form-icon" />auto (default)
         </label>
       </div>
       <div class="form-group p-relative clearfix">
         <div class="float-left form-label">Brave Search†</div>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeBrave} value="light" />
+          <input type="radio" bind:group={config.themeBrave} value="light" />
           <i class="form-icon" />light
         </label>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeBrave} value="dark" />
+          <input type="radio" bind:group={config.themeBrave} value="dark" />
           <i class="form-icon" />dark
         </label>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeBrave} value="auto" />
+          <input type="radio" bind:group={config.themeBrave} value="auto" />
           <i class="form-icon" />auto (default)
         </label>
       </div>
       <div class="form-group p-relative clearfix">
         <div class="float-left form-label">SearX/SearXNG†</div>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeSearx} value="light" />
+          <input type="radio" bind:group={config.themeSearx} value="light" />
           <i class="form-icon" />light
         </label>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeSearx} value="dark" />
+          <input type="radio" bind:group={config.themeSearx} value="dark" />
           <i class="form-icon" />dark
         </label>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeSearx} value="auto" />
+          <input type="radio" bind:group={config.themeSearx} value="auto" />
           <i class="form-icon" />auto (default)
         </label>
       </div>
       <div class="form-group p-relative clearfix">
         <div class="float-left form-label">Kagi Search</div>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeKagi} value="light" />
+          <input type="radio" bind:group={config.themeKagi} value="light" />
           <i class="form-icon" />light
         </label>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeKagi} value="dark" />
+          <input type="radio" bind:group={config.themeKagi} value="dark" />
           <i class="form-icon" />dark
         </label>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeKagi} value="auto" />
+          <input type="radio" bind:group={config.themeKagi} value="auto" />
           <i class="form-icon" />auto (default)
         </label>
       </div>
       <div class="form-group p-relative clearfix">
         <div class="float-left form-label">Qwant</div>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeQwant} value="light" />
+          <input type="radio" bind:group={config.themeQwant} value="light" />
           <i class="form-icon" />light
         </label>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeQwant} value="dark" />
+          <input type="radio" bind:group={config.themeQwant} value="dark" />
           <i class="form-icon" />dark
         </label>
         <label class="form-inline float-right form-radio">
-          <input type="radio" bind:group={themeQwant} value="auto" />
+          <input type="radio" bind:group={config.themeQwant} value="auto" />
           <i class="form-icon" />auto (default)
         </label>
       </div>
@@ -280,27 +250,15 @@
   <div class="divider" />
 
   <div class="button-row">
-    {#if isSuccess}
-      <div class="form-group mr-2 has-success">
-        <span class="form-input-hint">
-          <i class="icon icon-check" /> Connection successful
-        </span>
+    {#if connection?.success}
+      <div class="form-group mr-2 has-success form-input-hint">
+        <i class="icon icon-check" /> {connection.message}
       </div>
-    {:else if isError}
-      <div class="form-group mr-2 has-error">
-        <span class="form-input-hint">
-          <div>
-            <i class="icon icon-cross" /> Connection failed
-          </div>
-          <div>
-            <b>Status Code:</b>
-            {errorStatus} <br />
-          </div>
-          <div>
-            <b>Error:</b>
-            {errorMessage}
-          </div>
-        </span>
+    {:else if connection}
+      <div class="form-group mr-2 has-error form-input-hint">
+        <div><i class="icon icon-cross" /> Connection failed</div>
+        {#if connection.status}<div><b>Status Code:</b> {connection.status}</div>{/if}
+        <div><b>Error:</b> {connection.message}</div>
       </div>
     {:else}
       <div></div>
@@ -308,7 +266,8 @@
     <button
       type="submit"
       class="ml-2 btn btn-primary"
-      disabled={!(baseUrl && token)}
+      disabled={!((config.linkding.enabled && config.linkding.baseUrl && config.linkding.token) ||
+        (config.readeck.enabled && config.readeck.baseUrl && config.readeck.token))}
     >
       Save
     </button>
@@ -318,7 +277,6 @@
 <style>
   .button-row {
     display: flex;
-    justify-content: flex-start;
     align-items: baseline;
     justify-content: space-between;
   }

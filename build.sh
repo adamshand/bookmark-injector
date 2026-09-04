@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-# Update dependencies
-npm install
-
-# Run rollup build
+npm ci
+npm test
 npm run build
+node scripts/prepare-firefox.mjs
 
-# Lint extension, while excluding dev files
-npx web-ext lint --ignore-files .idea dist docs src web-ext-artifacts scss .gitignore *.sh *.ps1 *.iml *.js *.lock
-# Build extension, while excluding dev files
-npx web-ext build --overwrite-dest --ignore-files .idea dist docs src web-ext-artifacts scss .gitignore *.sh *.ps1 *.iml *.js *.lock
+npx web-ext lint --source-dir dist/firefox
+npx web-ext build --source-dir dist/firefox --artifacts-dir web-ext-artifacts --overwrite-dest
 
-echo "✅ Done"
+echo "✅ Chrome unpacked extension: $PWD"
+echo "✅ Firefox package: $PWD/web-ext-artifacts"

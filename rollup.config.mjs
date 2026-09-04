@@ -1,92 +1,40 @@
-import commonjs from '@rollup/plugin-commonjs';
-import resolve from '@rollup/plugin-node-resolve';
-import svelte from 'rollup-plugin-svelte';
-import terser from '@rollup/plugin-terser';
+import resolve from "@rollup/plugin-node-resolve";
+import terser from "@rollup/plugin-terser";
+import svelte from "rollup-plugin-svelte";
 
 const production = !process.env.ROLLUP_WATCH;
 
+function bundle(
+  input,
+  file,
+  { name, extraPlugins = [], resolveOptions = { browser: true } } = {},
+) {
+  return {
+    input,
+    output: {
+      sourcemap: true,
+      format: "iife",
+      name,
+      file,
+    },
+    plugins: [
+      ...extraPlugins,
+      resolve(resolveOptions),
+      production && terser(),
+    ].filter(Boolean),
+    watch: { clearScreen: false },
+  };
+}
+
 export default [
-	// Main bundle (options page)
-	{
-		input: 'src/index.js',
-		output: {
-			sourcemap: true,
-			format: 'iife',
-			name: 'linkding',
-			file: 'build/bundle.js'
-		},
-		plugins: [
-			svelte({
-				emitCss: false
-			}),
-
-			// If you have external dependencies installed from
-			// npm, you'll most likely need these plugins. In
-			// some cases you'll need additional configuration —
-			// consult the documentation for details:
-			// https://github.com/rollup/rollup-plugin-commonjs
-			resolve({
-				browser: true,
-				dedupe: importee => importee === 'svelte' || importee.startsWith('svelte/')
-			}),
-			commonjs(),
-
-			// If we're building for production (npm run build
-			// instead of npm run dev), minify
-			production && terser()
-		],
-		watch: {
-			clearScreen: false
-		}
-	},
-	// Background bundle
-	{
-		input: 'src/background.js',
-		output: {
-			sourcemap: true,
-			format: 'iife',
-			file: 'build/background.js'
-		},
-		plugins: [
-			// If you have external dependencies installed from
-			// npm, you'll most likely need these plugins. In
-			// some cases you'll need additional configuration —
-			// consult the documentation for details:
-			// https://github.com/rollup/rollup-plugin-commonjs
-			resolve({ browser: true }),
-			commonjs(),
-
-			// If we're building for production (npm run build
-			// instead of npm run dev), minify
-			production && terser()
-		],
-		watch: {
-			clearScreen: false
-		}
-	},
-	// searchInjection bundle
-	{
-		input: 'src/searchInjection.js',
-		output: {
-			sourcemap: true,
-			format: 'iife',
-			file: 'build/searchInjection.js'
-		},
-		plugins: [
-			// If you have external dependencies installed from
-			// npm, you'll most likely need these plugins. In
-			// some cases you'll need additional configuration —
-			// consult the documentation for details:
-			// https://github.com/rollup/rollup-plugin-commonjs
-			resolve({ browser: true }),
-			commonjs(),
-
-			// If we're building for production (npm run build
-			// instead of npm run dev), minify
-			production && terser()
-		],
-		watch: {
-			clearScreen: false
-		}
-	}
+  bundle("src/index.js", "build/bundle.js", {
+    name: "bookmarkInjector",
+    extraPlugins: [svelte({ emitCss: false })],
+    resolveOptions: {
+      browser: true,
+      dedupe: (importee) => importee === "svelte" || importee.startsWith("svelte/"),
+    },
+  }),
+  bundle("src/background.js", "build/background.js"),
+  bundle("src/searchInjection.js", "build/searchInjection.js"),
 ];

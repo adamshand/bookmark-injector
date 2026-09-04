@@ -1,10 +1,19 @@
-import { getStorage } from "./browser";
+import { getStorage } from "./browser.js";
 
 const CONFIG_KEY = "ld_ext_config";
 
 const DEFAULT_CONFIG = {
-  baseUrl: "",
-  token: "",
+  linkding: {
+    enabled: false,
+    baseUrl: "",
+    token: "",
+  },
+  readeck: {
+    enabled: false,
+    baseUrl: "",
+    token: "",
+    enrichAnnotations: true,
+  },
   resultNum: 10,
   showLogo: true,
   openLinkType: "newTab",
@@ -16,32 +25,42 @@ const DEFAULT_CONFIG = {
   themeQwant: "auto",
 };
 
-export async function getConfiguration() {
+export function normalizeConfiguration(saved = {}) {
+  const source = saved && typeof saved === "object" ? saved : {};
+  const { baseUrl = "", token = "", ...current } = source;
+  return {
+    ...DEFAULT_CONFIG,
+    ...current,
+    linkding: {
+      ...DEFAULT_CONFIG.linkding,
+      enabled: Boolean(baseUrl && token),
+      baseUrl,
+      token,
+      ...(current.linkding || {}),
+    },
+    readeck: {
+      ...DEFAULT_CONFIG.readeck,
+      ...(current.readeck || {}),
+    },
+  };
+}
+
+export function getConfiguration(storage = getStorage()) {
   return new Promise((resolve) => {
-    getStorage().get(CONFIG_KEY, (data) => {
-      let config = { ...DEFAULT_CONFIG }; // Start with defaults
-      
-      if (data && data[CONFIG_KEY]) {
-        try {
-          const savedConfig = JSON.parse(data[CONFIG_KEY]);
-          // Merge saved values OVER the defaults
-          config = { ...config, ...savedConfig };
-        } catch (e) {
-          console.error("Linkding Injector: Failed to parse config", e);
-        }
+    storage.get(CONFIG_KEY, (data) => {
+      try {
+        resolve(normalizeConfiguration(JSON.parse(data?.[CONFIG_KEY] || "{}")));
+      } catch (error) {
+        console.error("Bookmark Injector: failed to parse configuration", error);
+        resolve(normalizeConfiguration());
       }
-      
-      resolve(config);
     });
   });
 }
 
-export function saveConfiguration(config) {
+export function saveConfiguration(config, storage = getStorage()) {
   const configJson = JSON.stringify(config);
-  getStorage().set({ [CONFIG_KEY]: configJson });
-}
-
-export async function isConfigurationComplete() {
-  const { baseUrl, token } = await getConfiguration();
-  return !!baseUrl && !!token;
+  return new Promise((resolve) => {
+    storage.set({ [CONFIG_KEY]: configJson }, resolve);
+  });
 }

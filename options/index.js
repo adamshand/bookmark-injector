@@ -1,2 +1,2 @@
-var appTarget = document.getElementById('app');
-new linkding.Options({target: appTarget});
+const appTarget = document.getElementById("app");
+new bookmarkInjector.Options({ target: appTarget });

@@ -1,23 +1,13 @@
-function isChrome() {
-  return typeof chrome !== "undefined";
-}
-
-function getBrowser() {
-  return isChrome() ? chrome : browser;
-}
-
-/* Sanitise input to prevent unwanted injection of html or even javascript 
-  through linkding search results, e.g. in the bookmark title or description 
-*/
-function escapeHTML(str) {
-  let p = document.createElement("p");
-  p.appendChild(document.createTextNode(str));
-  return p.innerHTML;
-}
+import { getBrowser } from "./browser.js";
+import { buildResultsPanelHtml } from "./render.js";
 
 const browser = getBrowser();
-
 const port = browser.runtime.connect({ name: "port-from-cs" });
+port.onDisconnect.addListener(() => {
+  // Chrome closes extension ports when a page enters its back/forward cache.
+  // Observing lastError marks that expected lifecycle event as handled.
+  void browser.runtime.lastError;
+});
 let searchEngine;
 if (document.location.hostname.match(/duckduckgo\.com/)) {
   searchEngine = "duckduckgo";
@@ -32,10 +22,12 @@ if (document.location.hostname.match(/duckduckgo\.com/)) {
 } else if (document.location.hostname.match(/qwant\.com/)) {
   searchEngine = "qwant";
 } else {
-  console.debug("Linkding-Injector extension: unknown search engine.");
+  console.debug("Bookmark Injector extension: unknown search engine.");
 }
 
-// CSS selectors for finding the sidebar to later inject into
+// CSS selectors for finding the sidebar to later inject into. Keep this block
+// aligned with upstream linkding-injector so its frequent engine fixes remain
+// straightforward to merge.
 const sidebarSelectors = {
   duckduckgo: "section[data-area=sidebar]",
   google: "#rhs",
@@ -45,187 +37,122 @@ const sidebarSelectors = {
   qwant: ".is-sidebar",
 };
 
-// When background script answers with results, construct html for the result box
-port.onMessage.addListener(function (m) {
+// When the background script answers, construct the result box. Provider data
+// has already been normalized; search-engine placement remains upstream-shaped.
+port.onMessage.addListener(function (message) {
   const parser = new DOMParser();
-  let themeClass;
-  let htmlString = "";
-  let html;
+  let htmlString;
 
-  // In case we don't get results, but a message from the background script,
-  // display it. This is the case before proper configuration
-  if ("message" in m) {
-    const showLogo = m.config?.showLogo ?? true; // If configuration is not done yet, m.config is undefined
-
+  if ("message" in message) {
+    const showLogo = message.config?.showLogo ?? true;
     htmlString = `
     <div id="bookmark-list-container" class="${searchEngine}">
       <div id="navbar">
         <a id="ld-logo">
-          ${showLogo ? `<img src="${browser.runtime.getURL("icons/logo.svg")}" class="setup" />` : ""}
-          <h1>linkding injector</h1>
+          ${showLogo ? `<img src="${browser.runtime.getURL("icons/logo_32.png")}" class="setup" />` : ""}
+          <h1>bookmark injector</h1>
         </a>
         <a id="ld-options" class="openOptions">
-          <img class="ld-settings" src=${browser.runtime.getURL(
-            "icons/cog.svg"
-          )} />
+          <img class="ld-settings" src="${browser.runtime.getURL("icons/cog.svg")}" />
         </a>
       </div>
-      <div id="error-message">
-        ${m.message}
-      </div>
-    </div>
-    `;
-
-    // Convert the above string into a DOM document
-    html = parser.parseFromString(htmlString, "text/html");
-  }
-  // If there is no message and there are actual results display them
-  else if (m.results.length > 0) {
-    // If the theme for a search engine is not set to auto, we need to add
-    // specific CSS classes
-    // Get the theme configuration
-    const themes = {
-      duckduckgo: m.config.themeDuckduckgo,
-      google: m.config.themeGoogle,
-      brave: m.config.themeBrave,
-      searx: m.config.themeSearx,
-      kagi: m.config.themeKagi,
-      qwant: m.config.themeQwant,
-    };
-
-    const theme = themes[searchEngine];
-
-    if (theme == "auto") {
-      themeClass = ""; // automatic theme detection
-    } else {
-      themeClass = theme; // "dark" for dark theme, "light" for light theme
+      <div id="error-message">${message.message}</div>
+    </div>`;
+  } else {
+    const providers = (message.providers || []).filter(
+      (provider) => provider.results.length > 0,
+    );
+    if (providers.length === 0) {
+      if (message.warnings?.length) {
+        console.error("bookmark injector:", message.warnings.join("; "));
+      }
+      return;
     }
 
-    // URL of the configured linkding instance (including search term)
-    let linkdingUrl =
-      m.config.baseUrl +
-      (searchTerm.length > 0 ? `/bookmarks?q=${searchTerm}` : "/");
-
-    htmlString += `
-    <div id="bookmark-list-container" class="${searchEngine} ${themeClass}">
-      <div id="navbar">
-        <a id="ld-logo" href="${linkdingUrl}">
-          ${m.config.showLogo ? `<img src="${browser.runtime.getURL("icons/logo.svg")}" />` : ""}
-          <h1>linkding injector</h1>
-        </a>
-        <div id="results_amount">
-          Found <span>${m.results.length}</span> ${
-      m.results.length == 1 ? "result" : "results"
-    }.
-        </div>
-        <a id="ld-options" class="openOptions">
-          <img class="ld-settings" src=${browser.runtime.getURL(
-            "icons/cog.svg"
-          )} />
-        </a>
-      </div>
-    `;
-
-    htmlString += `<ul id="bookmark-list">`;
-
-    m.results.forEach((bookmark) => {
-      htmlString += `
-        <li>
-          <div class="title">
-            <a
-              href="${bookmark.url}"
-              target=${m.config.openLinkType == "sameTab" ? "_self" : "_blank"}
-              rel="noopener"
-              >${escapeHTML(bookmark.title)}</a
-            >
-          </div>
-          <div class="description ${themeClass}">
-            <span class="tags">
-              ${bookmark.tags
-                .map((tag) => {
-                  return "<a>#" + escapeHTML(tag) + "</a>";
-                })
-                .join(" ")}
-              </a>
-            </span>
-    
-            ${bookmark.tags.length > 0 ? "|" : ""}
-    
-            <span>
-              ${escapeHTML(bookmark.description)}
-            </span>
-          </div>
-        </li>`;
+    const themes = {
+      duckduckgo: message.config.themeDuckduckgo,
+      google: message.config.themeGoogle,
+      brave: message.config.themeBrave,
+      searx: message.config.themeSearx,
+      kagi: message.config.themeKagi,
+      qwant: message.config.themeQwant,
+    };
+    const theme = themes[searchEngine];
+    const themeClass = theme === "auto" ? "" : theme;
+    htmlString = buildResultsPanelHtml({
+      searchEngine,
+      themeClass,
+      openLinkType: message.config.openLinkType,
+      showLogo: message.config.showLogo,
+      logoUrl: browser.runtime.getURL("icons/logo_32.png"),
+      optionsUrl: browser.runtime.getURL("icons/cog.svg"),
+      sourceIcons: {
+        linkding: browser.runtime.getURL("icons/ld_32.png"),
+        readeck: browser.runtime.getURL("icons/readeck.svg"),
+      },
+      providers,
     });
-    htmlString += `</ul></div>`;
-  } else {
-    console.error("linkding injector: no message and no search results");
-    return;
   }
 
-  // Finding the sidebar
+  // Finding the sidebar. This placement code intentionally tracks upstream.
   const sidebarSelector = sidebarSelectors[searchEngine];
   let sidebar = document.querySelector(sidebarSelector);
 
   // Google completely omits the sidebar container if there is no content.
-  // We need to add it manually before injection
+  // We need to add it manually before injection.
   if (searchEngine === "google" && sidebar === null) {
-    let sidebarContainerString = `
+    const sidebarContainerString = `
     <div id="rhs" class="TQc1id hSOk2e rhstc4"></div>`;
-    let sidebarContainer = parser.parseFromString(
+    const sidebarContainer = parser.parseFromString(
       sidebarContainerString,
-      "text/html"
+      "text/html",
     );
-    let container = document.querySelector("#rcnt");
+    const container = document.querySelector("#rcnt");
     container.appendChild(sidebarContainer.body.querySelector("div"));
     sidebar = document.querySelector("#rhs");
   }
 
-  // Convert the html string into a DOM document
-  html = parser.parseFromString(htmlString, "text/html");
-  // The actual injection
+  const html = parser.parseFromString(htmlString, "text/html");
   if (document.querySelector("#bookmark-list-container") == null) {
     sidebar.prepend(html.body.querySelector("div"));
   }
 
-  // Event listeners for opening the extension options. These can only be opened
-  // by the background script, so we need to send a message to it
-  document.querySelectorAll(".openOptions").forEach((el) => {
-    el.addEventListener("click", () => {
+  document.querySelectorAll(".openOptions").forEach((element) => {
+    element.addEventListener("click", () => {
       port.postMessage({ action: "openOptions" });
     });
   });
 });
 
-// Start the search by sending a message to background.js with the search term
-let queryString = location.search;
-let urlParams = new URLSearchParams(queryString);
-let searchTerm = escapeHTML(urlParams.get("q"));
-if (searchEngine == "searx") {
-  searchTerm = escapeHTML(document.querySelector("input#q").value);
+// Start the search by sending a message to background.js with the search term.
+// Keep extraction and delayed engine behavior close to upstream; the query is
+// URL-encoded by each provider rather than HTML-escaped before transport.
+const urlParams = new URLSearchParams(location.search);
+let searchTerm = urlParams.get("q") || "";
+if (searchEngine === "searx") {
+  searchTerm = document.querySelector("input#q")?.value || "";
 }
 
-if (searchEngine == "brave") {
+if (searchEngine === "brave") {
   // Brave search seems to remove the injection box if it is injected too soon.
   // Wait a bit before injecting.
   setTimeout(function () {
-    port.postMessage({ searchTerm: searchTerm });
+    port.postMessage({ searchTerm });
   }, 1600);
-} else if (searchEngine == "qwant") {
+} else if (searchEngine === "qwant") {
   // Qwant asynchronously loads the sidebar. We need to watch for when the
-  // sidebar is loaded and only then start the injection
-  const qwantObserver = new MutationObserver((mutations, observer) => {
-    if (document.querySelector(sidebarSelectors["qwant"])) {
-      port.postMessage({ searchTerm: searchTerm });
-      observer.disconnect(); // Stop observing after the element appears
+  // sidebar is loaded and only then start the injection.
+  const qwantObserver = new MutationObserver((_mutations, observer) => {
+    if (document.querySelector(sidebarSelectors.qwant)) {
+      port.postMessage({ searchTerm });
+      observer.disconnect();
     }
   });
 
   qwantObserver.observe(document.body, {
     childList: true,
-    subtree: true
+    subtree: true,
   });
 } else {
-  port.postMessage({ searchTerm: searchTerm });
+  port.postMessage({ searchTerm });
 }
-

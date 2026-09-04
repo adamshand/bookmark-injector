@@ -1,35 +1,14 @@
-$html-font-size: 18px !default;
+@use "sass:color";
 
-$body-bg: #161822 !default;
-$bg-color: lighten($body-bg, 5%) !default;
-$bg-color-light: lighten($body-bg, 5%) !default;
+$gray-color: #7f879b;
+$gray-color-dark: color.adjust($gray-color, $lightness: 20%);
 
-$border-color: #4c4e53 !default;
-$border-color-dark: $border-color !default;
-
-$body-font-color: #b5bec8 !default;
-$light-color: #fafafa !default;
-
-$gray-color: #7f879b !default;
-$gray-color-dark: lighten($gray-color, 20%) !default;
-
-$primary-color: #a8b1ff !default;
-$primary-color-dark: saturate($primary-color, 5%) !default;
-$secondary-color: lighten($body-bg, 10%) !default;
-
-$link-color: $primary-color !default;
-$link-color-dark: darken($link-color, 5%) !default;
-$link-color-light: $link-color !default;
+$primary-color: #5755d9;
+$primary-color-dark: #a8b1ff;
+$link-color-dark: color.adjust(#a8b1ff, $lightness: -5%);
 
 $alternative-color: #59bdb9;
-$alternative-color-dark: #73f1eb;
-
-/* Dark theme specific */
-$dt-primary-button-color: #5761cb !default;
-
-/* Custom additions to linkding variables */
 $alternative-color-light-theme: #05a6a3;
-$alternative-color-dark-light-theme: darken($alternative-color, 5%);
 
 $duckduckgo-bg: #282828;
 $duckduckgo-border-color: #dfe1e5;
@@ -37,15 +16,10 @@ $duckduckgo-border-color: #dfe1e5;
 $google-bg: #202124;
 $google-border-color-dark: #3c4043;
 
-$primary-color: #5755d9;
-
 $brave-bg: #1e2028;
 
 $searx-bg-dark: #202124;
 $searx-border-color-dark: #3c4043;
-
-$kagi-bg: #282828;
-$kagi-border-color: #dfe1e5;
 
 $kagi-bg-dark: #262837;
 $kagi-border-color-dark: rgba(229, 229, 229, 0.2);

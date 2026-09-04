@@ -1,54 +1,27 @@
-import { getBrowser, openOptions } from "./browser";
-import { getConfiguration, isConfigurationComplete } from "./configuration";
-
-import { LinkdingApi } from "./linkding";
+import { getBrowser, openOptions } from "./browser.js";
+import { getConfiguration } from "./configuration.js";
+import { LinkdingApi } from "./linkding.js";
+import { ReadeckApi } from "./readeck.js";
+import { createSearchHandler, guardPort } from "./search.js";
 
 const browser = getBrowser();
+const search = createSearchHandler({
+  getConfiguration,
+  makeLinkding: (configuration) => new LinkdingApi(configuration),
+  makeReadeck: (configuration) => new ReadeckApi(configuration),
+});
 
-// Connection to search injection content script
-let portFromCS;
-
-function connected(p) {
-  portFromCS = p;
-
-  // When the content script sends the search term, search on linkding and
-  // return results
-  portFromCS.onMessage.addListener(async function (m) {
-    if (m.action == "openOptions") {
-      // Open the add on options if the user clicks on the options link in the
-      // injected box
+// Keep this connection and search-engine wiring deliberately small. Upstream
+// changes its content-script targets often; provider behavior belongs behind
+// the normalized message produced by search.js instead.
+function connected(port) {
+  const guarded = guardPort(port, browser.runtime);
+  port.onMessage.addListener(async (message) => {
+    if (message.action === "openOptions") {
       openOptions();
-    } else if ((await isConfigurationComplete()) == false) {
-      portFromCS.postMessage({
-        message:
-          "Connection to your linkding instance is not configured yet! " +
-          "Please configure the extension in the <a class='openOptions'>options</a>.",
-      });
-    } else {
-      let config = await getConfiguration();
-
-      const api = new LinkdingApi(config);
-
-      // Configuration is complete, execute a search on linkding
-      api
-        .search(m.searchTerm, { limit: config.resultNum })
-        .then((results) => {
-          const bookmarkSuggestions = results.map((bookmark) => ({
-            url: bookmark.url,
-            title: bookmark.title || bookmark.website_title || bookmark.url,
-            description: bookmark.description || bookmark.website_description,
-            tags: bookmark.tag_names,
-            date: bookmark.date_modified,
-          }));
-          portFromCS.postMessage({
-            results: bookmarkSuggestions,
-            config: config,
-          });
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      return;
     }
+    await search(guarded, message);
   });
 }
 

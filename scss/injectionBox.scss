@@ -1,3 +1,5 @@
+@use "variables" as *;
+
 div#bookmark-list-container {
   padding: 20px 22px;
   margin-bottom: 20px;
@@ -70,11 +72,6 @@ div#bookmark-list-container {
     font-family: sans-serif;
   }
 
-  .tags a:hover {
-    text-decoration: none;
-    cursor: default;
-  }
-
   #error-message a,
   #error-message a:visited {
     color: $alternative-color !important;
@@ -131,7 +128,7 @@ div#bookmark-list-container {
       color: $alternative-color !important;
     }
     
-    .tags a {
+    .tags {
       color: $alternative-color;
     }
     

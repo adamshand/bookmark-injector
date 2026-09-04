@@ -1,58 +1,89 @@
 {
   "manifest_version": 3,
-  "name": "linkding injector",
-  "version": "1.3.11",
-  "description": "Injects search results from the linkding bookmark service into search pages like google and duckduckgo",
-  "homepage_url": "https://github.com/fivefold/linkding-injector.git",
-
+  "name": "Bookmark Injector for Linkding and Readeck",
+  "version": "1.4.1",
+  "description": "Adds results from your Linkding and Readeck libraries to web search pages",
+  "homepage_url": "https://github.com/adamshand/bookmark-injector",
   "browser_specific_settings": {
     "gecko": {
-      "id": "{19561335-5a63-4b4e-8182-1eced17f9b47}",
-      "strict_min_version": "140.0",
+      "id": "{ba756ed5-9e80-4928-bdbb-057cfda28ab5}",
+      "strict_min_version": "142.0",
       "data_collection_permissions": {
-          "required": ["searchTerms"]
-        }
+        "required": [
+          "searchTerms"
+        ]
+      }
     }
   },
-
   "icons": {
+    "16": "icons/logo_16.png",
     "19": "icons/logo_19.png",
     "32": "icons/logo_32.png",
+    "38": "icons/logo_38.png",
     "48": "icons/logo_48.png",
     "96": "icons/logo_96.png",
     "128": "icons/logo_128.png"
   },
-
   "background": {
-    "service_worker": "build/background.js",
-    "scripts": ["build/background.js"]
+    "service_worker": "build/background.js"
   },
-
   "content_scripts": [
     {
-      "matches": ["*://duckduckgo.com/*", "*://*.duckduckgo.com/*"],
-      "css": ["build/searchInjection.css"],
-      "js": ["build/searchInjection.js"]
+      "matches": [
+        "*://duckduckgo.com/*",
+        "*://*.duckduckgo.com/*"
+      ],
+      "css": [
+        "build/searchInjection.css"
+      ],
+      "js": [
+        "build/searchInjection.js"
+      ]
     },
     {
-      "matches": ["*://search.brave.com/*"],
-      "css": ["build/searchInjection.css"],
-      "js": ["build/searchInjection.js"]
+      "matches": [
+        "*://search.brave.com/*"
+      ],
+      "css": [
+        "build/searchInjection.css"
+      ],
+      "js": [
+        "build/searchInjection.js"
+      ]
     },
     {
-      "matches": ["*://kagi.com/*"],
-      "css": ["build/searchInjection.css"],
-      "js": ["build/searchInjection.js"]
+      "matches": [
+        "*://kagi.com/*"
+      ],
+      "css": [
+        "build/searchInjection.css"
+      ],
+      "js": [
+        "build/searchInjection.js"
+      ]
     },
     {
-      "matches": ["*://www.qwant.com/*"],
-      "css": ["build/searchInjection.css"],
-      "js": ["build/searchInjection.js"]
+      "matches": [
+        "*://www.qwant.com/*"
+      ],
+      "css": [
+        "build/searchInjection.css"
+      ],
+      "js": [
+        "build/searchInjection.js"
+      ]
     },
     {
-      "matches": ["*://*/search?*", "*://*/search"],
-      "css": ["build/searchInjection.css"],
-      "js": ["build/searchInjection.js"]
+      "matches": [
+        "*://*/search?*",
+        "*://*/search"
+      ],
+      "css": [
+        "build/searchInjection.css"
+      ],
+      "js": [
+        "build/searchInjection.js"
+      ]
     },
     {
       "matches": [
@@ -247,27 +278,37 @@
         "*://*.google.co.zw/*",
         "*://*.google.cat/*"
       ],
-      "css": ["build/searchInjection.css"],
-      "js": ["build/searchInjection.js"]
+      "css": [
+        "build/searchInjection.css"
+      ],
+      "js": [
+        "build/searchInjection.js"
+      ]
     }
   ],
-
   "options_ui": {
     "page": "options/index.html"
   },
-
   "content_security_policy": {
     "extension_pages": "script-src 'self'"
   },
-
   "web_accessible_resources": [
     {
-      "resources": ["/icons/*.png", "/icons/*.svg"],
-      "matches": ["https://*/*", "http://*/*"]
+      "resources": [
+        "/icons/*.png",
+        "/icons/*.svg"
+      ],
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ]
     }
   ],
-
-  "permissions": ["storage"],
-
-  "host_permissions": ["https://*/*", "http://*/*"]
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ]
 }
