@@ -8,11 +8,22 @@ export function getStorage() {
   return getBrowser().storage.local;
 }
 
+export function isContextInvalidated(error) {
+  return /extension context invalidated/i.test(error?.message || "");
+}
+
+function consumePortError(runtime) {
+  try { void runtime.lastError; } catch (error) {
+    // Even reading lastError can fail in an old content-script context.
+    if (!isContextInvalidated(error)) throw error;
+  }
+}
+
 export function guardPort(port, runtime) {
   let connected = true;
   port.onDisconnect.addListener(() => {
     connected = false;
-    void runtime.lastError;
+    consumePortError(runtime);
   });
   return {
     postMessage(message) {
@@ -20,7 +31,7 @@ export function guardPort(port, runtime) {
       try { port.postMessage(message); } catch {
         // A port may close before its onDisconnect listener is dispatched.
         connected = false;
-        void runtime.lastError;
+        consumePortError(runtime);
       }
     },
   };

@@ -114,6 +114,17 @@ test("client-side URL changes work despite stale sender.url, but stale search UR
   assert.equal(stale.closed, true);
 });
 
+test("tracking rewrites during iframe attachment do not discard the pending search", async (t) => {
+  const f = fixture(t);
+  const controller = await f.prepare();
+  const channel = controller.messages.at(-1).channel;
+  f.tabs.set(1, `${f.tabs.get(1)}&tracking=added#results`);
+  const iframe = f.connect("results-frame", 1, 4, f.runtime.getURL("results/index.html"));
+  await iframe.onMessage.emit({ action: "attach", channel });
+  assert.equal(f.searches, 1);
+  assert.equal(iframe.messages.at(-1).privateResult, "private");
+});
+
 test("both providers reject insecure URLs and embedded credentials before fetching", () => {
   for (const Api of [LinkdingApi, ReadeckApi]) {
     for (const baseUrl of ["http://example.org", "https://token@example.org", "file:///private"]) {

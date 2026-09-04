@@ -1,5 +1,6 @@
 import { engineForUrl, isSearchPage } from "./engines.js";
 import { guardPort } from "./browser.js";
+import { searchPageKey } from "./searchIdentity.js";
 
 const withoutHash = (value) => {
   try {
@@ -22,9 +23,10 @@ export function createConnectionRouter({ runtime, getConfiguration, getTab, sear
     const config = await getConfiguration();
     const tab = await getTab(sender.tab.id);
     // sender.url can retain the document's original URL after pushState.
-    // Check its origin, then bind this search to the current authoritative tab URL.
+    // Check its origin, then bind to the current tab's route and query. Ignore
+    // tracking rewrites even during attachment, but never an actual search change.
     if (new URL(tab.url).origin !== new URL(sender.url).origin ||
-        withoutHash(tab.url) !== withoutHash(pageUrl)) return null;
+        searchPageKey(tab.url) !== searchPageKey(pageUrl)) return null;
     const engine = engineForUrl(tab.url, config.searxOrigins);
     return isSearchPage(tab.url, engine) ? engine : null;
   }

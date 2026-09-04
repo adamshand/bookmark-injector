@@ -6,8 +6,9 @@
    Dynamic registration targets approved SearX hostnames only. Browser match patterns
    do not consistently express ports, so injection itself is not the trust boundary.
 2. A top-level content script opens a controller port. The background validates its
-   extension sender ID, frame ID, originating host, current tab URL, supported search
-   route, and exact approved origin. Broad API host permissions do not authorize a page.
+   extension sender ID, frame ID, originating host, current tab search identity (origin,
+   route, and query), supported search route, and exact approved origin. Tracking
+   parameters and fragments do not invalidate an otherwise unchanged search. Broad API host permissions do not authorize a page.
 3. After locating a sidebar and extracting a nonblank query, the controller receives
    a random channel and inserts `results/index.html` from the installed extension.
 4. That document connects through its own extension runtime port. The background
@@ -21,7 +22,7 @@
    active controller sessions; iframe storage listeners also clear completed results
    after an idle background worker has been suspended.
 
-The parent page receives only iframe sizing messages. Its scripts cannot read the
+The parent page receives only iframe sizing and color-scheme metadata. Its scripts cannot read the
 cross-origin iframe DOM, private titles, URLs, tags, descriptions, notes, or annotations.
 Same-tab result links use `_top`, not `_self`, so they navigate the tab rather than
 replacing the iframe. Links suppress referrers and new-tab opener access.

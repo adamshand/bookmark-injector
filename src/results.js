@@ -9,14 +9,16 @@ const root = document.querySelector("#results");
 let engine;
 let appearance = "light";
 let done = false;
-let lastHeight;
+let lastLayout;
 
 function resize() {
   const height = Math.ceil(root.getBoundingClientRect().height);
-  if (height === lastHeight) return;
-  lastHeight = height;
-  // This is the only page-visible message. No results, counts, URLs, or errors.
-  parent.postMessage({ type: "bookmark-injector-size", channel, height }, "*");
+  const colorScheme = document.documentElement.style.colorScheme || appearance;
+  const layout = `${height}:${colorScheme}`;
+  if (layout === lastLayout) return;
+  lastLayout = layout;
+  // Only layout/theme metadata is page-visible. No results, counts, URLs, or errors.
+  parent.postMessage({ type: "bookmark-injector-size", channel, height, colorScheme }, "*");
 }
 
 connection.onMessage.addListener((message) => {
@@ -30,6 +32,7 @@ connection.onMessage.addListener((message) => {
   const themeKey = `theme${engine[0].toUpperCase()}${engine.slice(1)}`;
   const theme = message.config[themeKey];
   const themeClass = ["light", "dark"].includes(theme) ? theme : appearance;
+  document.documentElement.style.colorScheme = themeClass;
   const html = buildResultsPanelHtml({
     searchEngine: engine,
     themeClass,

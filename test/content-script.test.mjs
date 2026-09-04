@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import test from "node:test";
-import { guardPort } from "../src/browser.js";
+import { guardPort, isContextInvalidated } from "../src/browser.js";
+import { searchPageKey } from "../src/searchIdentity.js";
 
 // Exercise content-script lifecycle without a browser or generated bundle.
 test("duplicate initialization opens one port; blank queries never start a search", async () => {
@@ -18,8 +19,11 @@ test("duplicate initialization opens one port; blank queries never start a searc
     disconnect() {},
   };
   const context = vm.createContext({
-    getBrowser: () => ({ runtime: { connect() { connections++; return connection; } } }),
-    guardPort, AbortController, URL, clearTimeout,
+    getBrowser: () => ({ runtime: {
+      id: "test", getURL: (path) => `chrome-extension://test/${path}`,
+      connect() { connections++; return connection; },
+    } }),
+    guardPort, isContextInvalidated, searchPageKey, AbortController, URL, clearTimeout, clearInterval,
     location: { href: "https://approved.example/search?q=" },
     window: { addEventListener() {} },
     document: { querySelector() { return { value: "stale POST input" }; } },
