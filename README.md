@@ -39,9 +39,9 @@ Readeck's full-text search covers bookmark titles, descriptions, extracted artic
 labels, bookmark notes, and annotation notes. The extension displays at most the ten best Readeck
 matches and links to the full search in Readeck.
 
-Optional annotation enrichment loads highlights and notes for those matches. Requests are limited
-to three at a time, and overlapping searches share in-flight requests without retaining stale
-annotation responses.
+Optional annotation enrichment loads highlights and notes after bookmark results appear. Each
+search uses at most three annotation requests at a time, and overlapping searches share in-flight
+requests without retaining stale annotation responses.
 
 ### Combined provider results
 
@@ -51,20 +51,31 @@ the source clear and link directly to each service's saved copy.
 
 ### Reliability and browser compatibility
 
-- Provider requests run concurrently and fail independently.
-- Results are returned to the correct browser tab, including overlapping searches.
-- Back/forward-cache port closures are handled without noisy Chromium console errors.
+- Provider results appear progressively; a slow service does not block a healthy one.
+- API requests, including response bodies, have a ten-second deadline. Annotation enrichment
+  has a separate display deadline and never delays initial bookmarks.
+- Results are returned to a tab-bound extension iframe, including overlapping searches.
+- Back/forward-cache restores and client-side URL changes start fresh searches.
+- Sidebar placement uses fallback selectors and bounded observers; duplicate initialization
+  and blank queries do not generate duplicate or unfiltered searches.
 - Chrome uses a Manifest V3 service worker.
 - Firefox receives a generated, compatible background-script manifest during packaging.
 - Existing Linkding Injector settings migrate automatically.
 
 ### Security hardening
 
-- Readeck instance URLs must use HTTPS.
-- Credentials remain in extension storage and are used only by the background worker.
-- Tokens are never included in messages sent to search-page content scripts.
+- Both provider URLs and approved SearX origins must use HTTPS. API redirects are rejected;
+  use the final instance URL rather than a redirecting alias.
+- Credentials remain in extension storage and are used by the background worker for searches
+  and the extension options page for connection tests.
+- Private results render in a packaged extension-origin iframe. Search-page scripts cannot
+  read its DOM; content scripts never receive bookmarks or tokens.
+- Only exact supported engine hosts and explicitly approved SearX origins can initiate searches.
+  The background checks the top-level sender, current tab URL, and one-use iframe attachment.
 - Result text is escaped and result URLs are protocol-checked before insertion.
 - Readeck searches are designed for a read-only bookmark token.
+
+See [the security model](docs/security.md) for trust boundaries and remaining limitations.
 
 ## Configuration
 
@@ -72,7 +83,8 @@ Open the extension's options page and enable one or both providers.
 
 ### Linkding
 
-Enter your Linkding instance URL and API token. The configurable result limit applies to Linkding.
+Enter your HTTPS Linkding instance URL and API token. The configurable result limit applies to
+Linkding (1–100). Existing HTTP configurations must be changed to HTTPS or disabled.
 
 ### Readeck
 
@@ -81,6 +93,16 @@ not need permission to create, edit, archive, or delete bookmarks.
 
 You can optionally disable highlight and annotation-note enrichment to make each search use only one
 Readeck API request.
+
+### SearX / SearXNG
+
+Add trusted HTTPS instance URLs to **Approved instance URLs**, one per line. Approval covers the
+origin (scheme, hostname, port), not an individual path. No instances are implicitly approved or
+automatically migrated from previously visited pages. Reload search pages after saving.
+See [SearX setup](docs/searx.md).
+
+**Save** validates settings locally without contacting providers. You can save with both providers
+disabled, or while a server is unavailable. **Test connections** is a separate, optional action.
 
 ## Install from source
 
@@ -129,15 +151,19 @@ Every commit then increments the patch version in `manifest.json`, `package.json
 `package-lock.json`. Git does not activate versioned hooks automatically, so this command is needed
 for each checkout.
 
-Provider clients and orchestration live in `src/linkding.js`, `src/readeck.js`, and `src/search.js`.
-Search-engine detection and sidebar placement remain in `src/searchInjection.js`. That brittle,
-search-engine-specific code deliberately stays close to upstream so future fixes can be merged.
+Provider clients and progressive orchestration live in `src/linkding.js`, `src/readeck.js`, and
+`src/search.js`. `src/connections.js` enforces the controller/iframe trust boundary.
+`src/engines.js` owns origin authorization; `src/placement.js` owns the small, engine-specific
+selector lists. Placement can change without relaxing authorization. `src/searchInjection.js`
+only manages search-page lifecycle and iframe layout; `src/results.js` renders private results.
 
 ## Permissions
 
 Like the upstream extension, Bookmark Injector currently requests broad HTTP and HTTPS host access so
-it can connect to arbitrary self-hosted instances. Optional per-instance host permissions would be a
-worthwhile improvement before broad store publication.
+it can connect to arbitrary self-hosted instances. The `scripting` permission registers content
+scripts for approved SearX hostnames; the background separately checks the exact origin and port.
+Only the iframe HTML entry point is web-accessible. Optional per-instance API host permissions
+remain a worthwhile improvement before broad store publication.
 
 ## Credits and license
 

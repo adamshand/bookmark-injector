@@ -28,7 +28,7 @@ function providerName(source) {
 }
 
 function resultHtml(bookmark, openLinkType, sourceIcons) {
-  const target = openLinkType === "sameTab" ? "_self" : "_blank";
+  const target = openLinkType === "sameTab" ? "_top" : "_blank";
   const tags = (bookmark.tags || [])
     .map((tag) => `<span>#${escapeHTML(tag)}</span>`)
     .join(" ");
@@ -48,11 +48,11 @@ function resultHtml(bookmark, openLinkType, sourceIcons) {
   const service = providerName(source);
   const icon = `<img src="${safeUrl(sourceIcons[source])}" alt="${service}" />`;
   const sourceIcon = bookmark.savedUrl
-    ? `<a class="source-copy ${source}" href="${safeUrl(bookmark.savedUrl)}" target="_blank" rel="noopener" title="Open ${service} saved copy">${icon}</a>`
+    ? `<a class="source-copy ${source}" href="${safeUrl(bookmark.savedUrl)}" target="_blank" rel="noopener noreferrer" title="Open ${service} saved copy">${icon}</a>`
     : `<span class="source-copy ${source}" title="No ${service} saved copy is available">${icon}</span>`;
 
   return `<li>
-    <div class="title">${sourceIcon}<a href="${safeUrl(bookmark.url)}" target="${target}" rel="noopener">${escapeHTML(bookmark.title)}</a></div>
+    <div class="title">${sourceIcon}<a href="${safeUrl(bookmark.url)}" target="${target}" rel="noopener noreferrer">${escapeHTML(bookmark.title)}</a></div>
     <div class="result-details">
       <div class="description">
         ${tags ? `<span class="tags">${tags}</span> | ` : ""}${escapeHTML(bookmark.description || "")}
@@ -79,7 +79,7 @@ export function interleaveProviderResults(providers) {
 function providerFooter(provider) {
   if (provider.total <= provider.results.length) return "";
   const name = providerName(provider.source);
-  return `<a class="provider-footer ${escapeHTML(provider.source)}" href="${safeUrl(provider.fullSearchUrl)}" target="_blank" rel="noopener">View all ${provider.total} results in ${name} →</a>`;
+  return `<a class="provider-footer ${escapeHTML(provider.source)}" href="${safeUrl(provider.fullSearchUrl)}" target="_blank" rel="noopener noreferrer">View all ${escapeHTML(provider.total)} results in ${name} →</a>`;
 }
 
 export function buildResultsPanelHtml({
@@ -98,7 +98,7 @@ export function buildResultsPanelHtml({
     <div id="navbar">
       <div id="ld-logo">${showLogo ? `<img src="${safeUrl(logoUrl)}" />` : ""}<h1>bookmark injector</h1></div>
       <div id="results_amount">Found <span>${count}</span> ${count === 1 ? "result" : "results"}.</div>
-      <a id="ld-options" class="openOptions"><img class="ld-settings" src="${safeUrl(optionsUrl)}" /></a>
+      <button id="ld-options" class="openOptions" type="button" aria-label="Open extension options"><img class="ld-settings" src="${safeUrl(optionsUrl)}" alt="" /></button>
     </div>
     <ul class="bookmark-list ${escapeHTML(themeClass)}">${results
       .map((bookmark) => resultHtml(bookmark, openLinkType, sourceIcons))

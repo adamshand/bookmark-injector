@@ -1,17 +1,25 @@
-**SearX/SearXNG support**
+# SearX / SearXNG support
 
-This extension includes experimental support for self-hosted SearX/SearXNG instances. To work, your instance must follow either of these URL patterns: `*://*/search?*`, `*://*/search`
+1. Open the extension options page.
+2. Add your instance to **Approved instance URLs**, one HTTPS URL per line.
+3. Save, then reload the search page.
 
-Examples that work:
-- `https://search.mywebsite.com/search`
-- `https://search.mywebsite.com/search?q=searchTerm`
-- `http://mysearch.local/search`
+Approval covers the full **origin** (scheme, hostname, and port). Entering
+`https://search.example.org/searx/` approves `https://search.example.org`, not only
+that path. Only approve instances you trust to initiate searches of your private library.
+HTTP instances are not supported.
 
-Examples that *don't* work:
-- `https://search.mywebsite.com/`
-- `http://mywebsite.com/searx/`
-- `http://mywebsite.com/searx/search`
+Approved instances may use `/search`, a path prefix such as `/searx/search`, or a
+root/prefix URL with a `q` query parameter. POST searches can read the query from
+`input#q` or `input[name=q]`. Blank queries are skipped.
 
-Also, nothing might be injected if you don't use the default "simple" theme.
+The default Simple theme is supported through `#sidebar` and `aside.sidebar`.
+The extension waits up to ten seconds for a sidebar. If your custom theme has
+neither container, no panel is inserted. This failure does not broaden access
+or start an unfiltered bookmark search.
 
-If the Bookmark Injector panel appears on other supported search engines but not on your SearX instance, check the [known issues](https://github.com/adamshand/bookmark-injector/issues) or [report it](https://github.com/adamshand/bookmark-injector/issues/new).
+Removing an instance revokes future background searches and updates dynamic
+content-script registration. Reload existing tabs after changing settings.
+
+Private results load inside an extension-origin iframe, not directly into your
+instance's DOM. See [the security model](security.md).

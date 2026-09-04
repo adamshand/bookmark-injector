@@ -1,0 +1,16 @@
+html, body { margin: 0; padding: 0; background: transparent; font: 14px/1.45 system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { overflow-wrap: anywhere; }
+div#bookmark-list-container { width: 100%; margin: 0; padding: 16px; font-size: 14px; }
+div#bookmark-list-container #navbar #ld-logo { width: auto; flex: 1; font-size: 12px; }
+div#bookmark-list-container #navbar #ld-logo img { width: 24px; height: 24px; }
+#results_amount { margin: 0 8px; font-size: 12px; }
+a { text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { border: 0; background: none; color: inherit; cursor: pointer; padding: 4px; }
+button img { width: 18px; height: 18px; }
+a:focus-visible, button:focus-visible { outline: 2px solid #628aff; outline-offset: 3px; }
+.bookmark-list li + li { margin-top: 14px; }
+.bookmark-status, .bookmark-warning { font-size: 12px; margin: 8px 0 0; }
+.bookmark-warning { color: #a34b13; }
+.dark .bookmark-warning { color: #ffb982; }

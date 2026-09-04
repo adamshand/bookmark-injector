@@ -1,6 +1,8 @@
+import { httpsBaseUrl, requestJson } from "./network.js";
+
 export class LinkdingApi {
   constructor(configuration, fetcher) {
-    this.baseUrl = configuration.baseUrl.replace(/\/+$/, "");
+    this.baseUrl = httpsBaseUrl(configuration.baseUrl, "Linkding");
     this.token = configuration.token;
     this.fetcher = fetcher || globalThis.fetch.bind(globalThis);
   }
@@ -8,15 +10,14 @@ export class LinkdingApi {
   async search(text, { limit = 100 } = {}) {
     const url = new URL(`${this.baseUrl}/api/bookmarks/`);
     url.searchParams.set("q", text);
-    url.searchParams.set("limit", String(limit));
-    const response = await this.fetcher(url.toString(), {
+    url.searchParams.set("limit", String(Math.min(100, Math.max(1, Number(limit) || 10))));
+    const { response, body } = await requestJson(this.fetcher, url.toString(), {
       headers: { Authorization: `Token ${this.token}` },
     });
     if (response.status !== 200) {
-      throw new Error(`Error searching Linkding: ${response.statusText}`);
+      throw new Error(`Error searching Linkding: HTTP ${response.status}`);
     }
 
-    const body = await response.json();
     const results = body.results.map((bookmark) => ({
       url: bookmark.url,
       savedUrl: bookmark.web_archive_snapshot_url || "",
@@ -32,35 +33,17 @@ export class LinkdingApi {
 
   async testConnection() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/bookmarks/?limit=1`, {
+      const { response, body } = await requestJson(this.fetcher, `${this.baseUrl}/api/bookmarks/?limit=1`, {
         headers: { Authorization: `Token ${this.token}` },
       });
-      if (response.status === 200) {
-        const body = await response.json();
-        if (Array.isArray(body.results)) {
-          return { success: true, status: 200, message: "Connection successful" };
-        }
-      }
-
-      let message = response.statusText || "Connection failed";
-      try {
-        const body = await response.json();
-        message = body.detail || body.message || message;
-      } catch {
-        // Keep the HTTP status text when the error body is not JSON.
-      }
-      return { success: false, status: response.status, message };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Network error";
       return {
-        success: false,
-        status: null,
-        message: ["Failed to fetch", "NetworkError when attempting to fetch resource."].includes(
-          message,
-        )
-          ? "Network error - unable to reach server"
-          : message,
+        success: response.status === 200 && Array.isArray(body?.results),
+        status: response.status,
+        message: response.status === 200 && Array.isArray(body?.results)
+          ? "Connection successful" : `Connection failed (HTTP ${response.status})`,
       };
+    } catch (error) {
+      return { success: false, status: null, message: error.message || "Network error" };
     }
   }
 }

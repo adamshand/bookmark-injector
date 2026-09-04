@@ -9,33 +9,50 @@
 
   let config = normalizeConfiguration();
   let connection;
+  let searxUrls = "";
+  let loaded = false;
+  let testing = false;
+  let saveMessage = "";
+  let saveError = false;
 
-  getConfiguration().then((saved) => (config = saved));
+  getConfiguration().then((saved) => {
+    config = saved;
+    searxUrls = (saved.searxOrigins || []).join("\n");
+    loaded = true;
+  }).catch((error) => {
+    saveError = true;
+    saveMessage = `Unable to load settings: ${error.message}`;
+  });
 
   async function handleSubmit() {
     try {
-      const tests = [];
-      if (config.linkding.enabled) {
-        tests.push(new LinkdingApi(config.linkding).testConnection());
-      }
-      if (config.readeck.enabled) {
-        tests.push(new ReadeckApi(config.readeck).testConnection());
-      }
-
-      const results = await Promise.all(tests);
-      connection = results.find((result) => !result.success) || {
-        success: true,
-        status: 200,
-        message: "Connection successful",
-      };
-      if (connection.success) await saveConfiguration(config);
+      await saveConfiguration({ ...config, searxOrigins: searxUrls.split(/\n/) });
+      saveError = false;
+      saveMessage = "Settings saved. Reload existing search pages to apply changes.";
     } catch (error) {
-      connection = {
-        success: false,
-        status: null,
-        message: error instanceof Error ? error.message : "Connection failed",
-      };
+      saveError = true;
+      saveMessage = error.message || "Unable to save settings";
     }
+  }
+
+  async function testConnections() {
+    testing = true;
+    const results = await Promise.all([
+      ["Linkding", config.linkding, LinkdingApi],
+      ["Readeck", config.readeck, ReadeckApi],
+    ].filter(([, provider]) => provider.enabled).map(async ([name, provider, Api]) => {
+      try {
+        const result = await new Api(provider).testConnection();
+        return { ...result, message: `${name}: ${result.message}` };
+      } catch (error) {
+        return { success: false, message: `${name}: ${error.message}` };
+      }
+    }));
+    connection = {
+      success: results.every((result) => result.success),
+      message: results.map((result) => result.message).join("; ") || "No providers enabled",
+    };
+    testing = false;
   }
 </script>
 
@@ -43,7 +60,8 @@
 <div class="divider" />
 <p>
   Search Linkding, Readeck, or both whenever you use a supported search engine.
-  Credentials stay in extension storage and are never sent to search pages.
+  Credentials stay in extension storage. Private results are displayed in an isolated
+  extension frame, not exposed to search-page scripts.
 </p>
 <form class="form" on:submit|preventDefault={handleSubmit}>
   <h6>Linkding</h6>
@@ -57,6 +75,7 @@
     <label class="form-label" for="input-linkding-url">Base URL</label>
     <input class="form-input" type="url" id="input-linkding-url"
       placeholder="https://linkding.example" bind:value={config.linkding.baseUrl} />
+    <div class="form-input-hint">HTTPS is required. Redirecting API URLs are not supported.</div>
   </div>
   <div class="form-group">
     <label class="form-label" for="input-linkding-token">API token</label>
@@ -70,6 +89,7 @@
       type="number"
       id="input-search-num"
       min="1"
+      max="100"
       bind:value={config.resultNum}
     />
     <div class="form-input-hint">
@@ -102,6 +122,18 @@
       <input type="checkbox" bind:checked={config.readeck.enrichAnnotations} />
       <i class="form-icon"></i> Show highlights and notes for the first 10 matches
     </label>
+  </div>
+  <div class="divider" />
+  <h6>SearX / SearXNG</h6>
+  <div class="form-group">
+    <label class="form-label" for="input-searx-origins">Approved instance URLs</label>
+    <textarea id="input-searx-origins" class="form-input" rows="3"
+      placeholder="https://search.example.org" bind:value={searxUrls}></textarea>
+    <div class="form-input-hint">
+      One HTTPS URL per line. Approval covers the whole origin (scheme, hostname,
+      and port), not just a path. Only approve instances you trust to initiate
+      searches of your private library. Reload search pages after saving.
+    </div>
   </div>
   <div class="accordion">
     <input type="checkbox" id="accordion-1" name="accordion-checkbox" hidden />
@@ -249,6 +281,9 @@
 
   <div class="divider" />
 
+  {#if saveMessage}
+    <p role="status" class:has-error={saveError}>{saveMessage}</p>
+  {/if}
   <div class="button-row">
     {#if connection?.success}
       <div class="form-group mr-2 has-success form-input-hint">
@@ -263,14 +298,10 @@
     {:else}
       <div></div>
     {/if}
-    <button
-      type="submit"
-      class="ml-2 btn btn-primary"
-      disabled={!((config.linkding.enabled && config.linkding.baseUrl && config.linkding.token) ||
-        (config.readeck.enabled && config.readeck.baseUrl && config.readeck.token))}
-    >
-      Save
+    <button type="button" class="ml-2 btn" on:click={testConnections} disabled={!loaded || testing}>
+      {testing ? "Testing…" : "Test connections"}
     </button>
+    <button type="submit" class="ml-2 btn btn-primary" disabled={!loaded}>Save</button>
   </div>
 </form>
 

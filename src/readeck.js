@@ -1,20 +1,11 @@
+import { httpsBaseUrl, requestJson } from "./network.js";
+
 const DEFAULT_LIMIT = 10;
 const annotationRequests = new Map();
 
-function baseUrlOf(value) {
-  const url = new URL(value);
-  if (url.protocol !== "https:") {
-    throw new Error("Readeck requires an HTTPS URL");
-  }
-  url.pathname = url.pathname.replace(/\/+$/, "");
-  url.search = "";
-  url.hash = "";
-  return url.toString().replace(/\/$/, "");
-}
-
 export class ReadeckApi {
   constructor(configuration, fetcher) {
-    this.baseUrl = baseUrlOf(configuration.baseUrl);
+    this.baseUrl = httpsBaseUrl(configuration.baseUrl, "Readeck");
     this.token = configuration.token;
     this.fetcher = fetcher || globalThis.fetch.bind(globalThis);
   }
@@ -24,16 +15,15 @@ export class ReadeckApi {
     const url = new URL(`${this.baseUrl}/api/bookmarks`);
     url.searchParams.set("search", text);
     url.searchParams.set("limit", String(limit));
-    const response = await this.fetcher(url.toString(), {
+    const { response, body: bookmarks } = await requestJson(this.fetcher, url.toString(), {
       headers: { Authorization: `Bearer ${this.token}` },
       // Readeck responses are marked private and may otherwise be reused from
       // the browser's HTTP cache after bookmarks or annotations change.
       cache: "no-store",
     });
     if (response.status !== 200) {
-      throw new Error(`Error searching Readeck: ${response.statusText}`);
+      throw new Error(`Error searching Readeck: HTTP ${response.status}`);
     }
-    const bookmarks = await response.json();
     const results = bookmarks.map((bookmark) => ({
       id: bookmark.id,
       url: bookmark.url,
@@ -44,17 +34,17 @@ export class ReadeckApi {
       note: bookmark.note || "",
       annotations: [],
     }));
-    const total = Number(response.headers.get("Total-Count"));
+    const totalHeader = response.headers.get("Total-Count");
+    const total = totalHeader === null ? NaN : Number(totalHeader);
     return { results, total: Number.isFinite(total) ? total : results.length };
   }
 
   async testConnection() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/bookmarks?limit=1`, {
+      const { response, body } = await requestJson(this.fetcher, `${this.baseUrl}/api/bookmarks?limit=1`, {
         headers: { Authorization: `Bearer ${this.token}` },
       });
       if (response.status === 200) {
-        const body = await response.json();
         if (Array.isArray(body)) {
           return { success: true, status: 200, message: "Connection successful" };
         }
@@ -62,7 +52,7 @@ export class ReadeckApi {
       return {
         success: false,
         status: response.status,
-        message: response.statusText || "Connection failed",
+        message: `Connection failed (HTTP ${response.status})`,
       };
     } catch (error) {
       return {
@@ -76,17 +66,16 @@ export class ReadeckApi {
   async annotations(bookmarkId) {
     const requestKey = `${this.baseUrl}\0${this.token}\0${bookmarkId}`;
     if (!annotationRequests.has(requestKey)) {
-      const request = this.fetcher(
+      const request = requestJson(this.fetcher,
         `${this.baseUrl}/api/bookmarks/${encodeURIComponent(bookmarkId)}/annotations`,
         {
           headers: { Authorization: `Bearer ${this.token}` },
           cache: "no-store",
         },
-      ).then(async (response) => {
+      ).then(({ response, body: annotations }) => {
         if (response.status !== 200) {
-          throw new Error(`Error loading Readeck annotations: ${response.statusText}`);
+          throw new Error(`Error loading Readeck annotations: HTTP ${response.status}`);
         }
-        const annotations = await response.json();
         return annotations.map((annotation) => ({
           text: annotation.text || "",
           note: annotation.note || "",

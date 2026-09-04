@@ -37,4 +37,5 @@ export default [
   }),
   bundle("src/background.js", "build/background.js"),
   bundle("src/searchInjection.js", "build/searchInjection.js"),
+  bundle("src/results.js", "build/results.js"),
 ];

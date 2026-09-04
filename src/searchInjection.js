@@ -1,154 +1,92 @@
 import { getBrowser, guardPort } from "./browser.js";
-import { buildResultsPanelHtml } from "./render.js";
+import { findSidebar, pageAppearance, waitForSidebar } from "./placement.js";
 
-const browser = getBrowser();
-const connection = browser.runtime.connect({ name: "port-from-cs" });
-const port = guardPort(connection, browser.runtime);
-let searchEngine;
-if (document.location.hostname.match(/duckduckgo\.com/)) {
-  searchEngine = "duckduckgo";
-} else if (document.location.hostname.match(/google/)) {
-  searchEngine = "google";
-} else if (document.location.hostname.match(/search\.brave\.com/)) {
-  searchEngine = "brave";
-} else if (document.location.hostname.match(/kagi\.com/)) {
-  searchEngine = "kagi";
-} else if (document.location.href.match(/http.?:\/\/.+\/search/)) {
-  searchEngine = "searx";
-} else if (document.location.hostname.match(/qwant\.com/)) {
-  searchEngine = "qwant";
-} else {
-  console.debug("Bookmark Injector extension: unknown search engine.");
-}
+// Dynamic SearX registration and static engine registrations may overlap after
+// configuration changes. This flag lives in the isolated content-script world.
+if (!globalThis.__bookmarkInjectorStarted) {
+  globalThis.__bookmarkInjectorStarted = true;
+  const browser = getBrowser();
+  let current;
+  let lastUrl;
+  let placementRetries = 0;
 
-// CSS selectors for finding the sidebar to later inject into. Keep this block
-// aligned with upstream linkding-injector so its frequent engine fixes remain
-// straightforward to merge.
-const sidebarSelectors = {
-  duckduckgo: "section[data-area=sidebar]",
-  google: "#rhs",
-  brave: "#mixed-side",
-  searx: "#sidebar",
-  kagi: ".right-content-box > ._0_right_sidebar",
-  qwant: ".is-sidebar",
-};
+  function stop() {
+    if (!current) return;
+    current.abort.abort();
+    current.observer?.disconnect();
+    clearTimeout(current.timer);
+    current.connection.disconnect();
+    current.frame?.remove();
+    current = null;
+  }
 
-// When the background script answers, construct the result box. Provider data
-// has already been normalized; search-engine placement remains upstream-shaped.
-connection.onMessage.addListener(function (message) {
-  const parser = new DOMParser();
-  let htmlString;
-
-  if ("message" in message) {
-    const showLogo = message.config?.showLogo ?? true;
-    htmlString = `
-    <div id="bookmark-list-container" class="${searchEngine}">
-      <div id="navbar">
-        <a id="ld-logo">
-          ${showLogo ? `<img src="${browser.runtime.getURL("icons/logo_32.png")}" class="setup" />` : ""}
-          <h1>bookmark injector</h1>
-        </a>
-        <a id="ld-options" class="openOptions">
-          <img class="ld-settings" src="${browser.runtime.getURL("icons/cog.svg")}" />
-        </a>
-      </div>
-      <div id="error-message">${message.message}</div>
-    </div>`;
-  } else {
-    const providers = (message.providers || []).filter(
-      (provider) => provider.results.length > 0,
-    );
-    if (providers.length === 0) {
-      if (message.warnings?.length) {
-        console.error("bookmark injector:", message.warnings.join("; "));
+  function refresh(force = false) {
+    if (!force && location.href === lastUrl) return;
+    stop();
+    if (location.href !== lastUrl) placementRetries = 0;
+    lastUrl = location.href;
+    const state = { abort: new AbortController() };
+    current = state;
+    const connection = browser.runtime.connect({ name: "search-controller" });
+    state.connection = connection;
+    const port = guardPort(connection, browser.runtime);
+    connection.onMessage.addListener(async (message) => {
+      if (current !== state) return;
+      if (message.action === "revoked") {
+        stop();
+        lastUrl = null;
+      } else if (message.action === "prepared") {
+        state.engine = message.engine;
+        const params = new URL(location.href).searchParams;
+        const term = (params.has("q") ? params.get("q") :
+          (state.engine === "searx" ? document.querySelector("input#q, input[name=q]")?.value || "" : "")).trim();
+        if (!term) { stop(); return; }
+        const sidebar = await waitForSidebar(document, state.engine, state.abort.signal);
+        if (!sidebar || current !== state) { if (current === state) stop(); return; }
+        port.postMessage({ action: "start", searchTerm: term.slice(0, 2000), appearance: pageAppearance(document) });
+      } else if (message.action === "frame") {
+        const frame = document.createElement("iframe");
+        state.frame = frame;
+        state.channel = message.channel;
+        frame.src = `${browser.runtime.getURL("results/index.html")}#${message.channel}`;
+        frame.title = "Private bookmark search results";
+        frame.referrerPolicy = "no-referrer";
+        frame.style.cssText = "display:block;width:100%;min-width:0;height:100px;border:0;margin:0 0 20px;color-scheme:normal;";
+        const mount = () => {
+          if (frame.isConnected || current !== state) return;
+          if (state.mounted) {
+            // Re-inserting an iframe reloads its document. Obtain a fresh,
+            // tab-bound channel rather than replaying its consumed attachment.
+            if (placementRetries < 2) { placementRetries += 1; refresh(true); }
+            return;
+          }
+          const sidebar = findSidebar(document, state.engine);
+          if (sidebar) { sidebar.prepend(frame); state.mounted = true; }
+        };
+        mount();
+        // Engines can replace their sidebar shortly after initial rendering.
+        // Retry placement for a bounded window; never observe the entire page forever.
+        state.observer = new MutationObserver(mount);
+        state.observer.observe(document.documentElement, { childList: true, subtree: true });
+        state.timer = setTimeout(() => state.observer.disconnect(), 10000);
       }
-      return;
-    }
-
-    const themes = {
-      duckduckgo: message.config.themeDuckduckgo,
-      google: message.config.themeGoogle,
-      brave: message.config.themeBrave,
-      searx: message.config.themeSearx,
-      kagi: message.config.themeKagi,
-      qwant: message.config.themeQwant,
-    };
-    const theme = themes[searchEngine];
-    const themeClass = theme === "auto" ? "" : theme;
-    htmlString = buildResultsPanelHtml({
-      searchEngine,
-      themeClass,
-      openLinkType: message.config.openLinkType,
-      showLogo: message.config.showLogo,
-      logoUrl: browser.runtime.getURL("icons/logo_32.png"),
-      optionsUrl: browser.runtime.getURL("icons/cog.svg"),
-      sourceIcons: {
-        linkding: browser.runtime.getURL("icons/ld_32.png"),
-        readeck: browser.runtime.getURL("icons/readeck.svg"),
-      },
-      providers,
     });
+    port.postMessage({ action: "prepare", url: location.href });
   }
 
-  // Finding the sidebar. This placement code intentionally tracks upstream.
-  const sidebarSelector = sidebarSelectors[searchEngine];
-  let sidebar = document.querySelector(sidebarSelector);
-
-  // Google completely omits the sidebar container if there is no content.
-  // We need to add it manually before injection.
-  if (searchEngine === "google" && sidebar === null) {
-    const sidebarContainerString = `
-    <div id="rhs" class="TQc1id hSOk2e rhstc4"></div>`;
-    const sidebarContainer = parser.parseFromString(
-      sidebarContainerString,
-      "text/html",
-    );
-    const container = document.querySelector("#rcnt");
-    container.appendChild(sidebarContainer.body.querySelector("div"));
-    sidebar = document.querySelector("#rhs");
-  }
-
-  const html = parser.parseFromString(htmlString, "text/html");
-  if (document.querySelector("#bookmark-list-container") == null) {
-    sidebar.prepend(html.body.querySelector("div"));
-  }
-
-  document.querySelectorAll(".openOptions").forEach((element) => {
-    element.addEventListener("click", () => {
-      port.postMessage({ action: "openOptions" });
-    });
+  window.addEventListener("message", (event) => {
+    if (!current?.frame || event.source !== current.frame.contentWindow ||
+        event.origin !== browser.runtime.getURL("").replace(/\/$/, "")) return;
+    const message = event.data;
+    if (message?.type !== "bookmark-injector-size" || message.channel !== current.channel ||
+        !Number.isFinite(message.height)) return;
+    current.frame.style.height = `${Math.min(18000, Math.max(80, message.height))}px`;
   });
-});
-
-// Start the search by sending a message to background.js with the search term.
-// Keep extraction and delayed engine behavior close to upstream; the query is
-// URL-encoded by each provider rather than HTML-escaped before transport.
-const urlParams = new URLSearchParams(location.search);
-let searchTerm = urlParams.get("q") || "";
-if (searchEngine === "searx") {
-  searchTerm = document.querySelector("input#q")?.value || "";
-}
-
-if (searchEngine === "brave") {
-  // Brave search seems to remove the injection box if it is injected too soon.
-  // Wait a bit before injecting.
-  setTimeout(function () {
-    port.postMessage({ searchTerm });
-  }, 1600);
-} else if (searchEngine === "qwant") {
-  // Qwant asynchronously loads the sidebar. We need to watch for when the
-  // sidebar is loaded and only then start the injection.
-  const qwantObserver = new MutationObserver((_mutations, observer) => {
-    if (document.querySelector(sidebarSelectors.qwant)) {
-      port.postMessage({ searchTerm });
-      observer.disconnect();
-    }
-  });
-
-  qwantObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
-} else {
-  port.postMessage({ searchTerm });
+  window.addEventListener("pagehide", stop);
+  window.addEventListener("pageshow", (event) => { if (event.persisted) refresh(true); });
+  window.addEventListener("popstate", () => refresh());
+  // pushState does not emit an event in the isolated world. A cheap URL-only
+  // check supports client-side searches without a perpetual DOM observer.
+  setInterval(() => refresh(), 1000);
+  refresh();
 }

@@ -8,7 +8,7 @@ const root = new URL("../", import.meta.url);
 await rm(destination, { force: true, recursive: true });
 await mkdir(destination, { recursive: true });
 
-for (const directory of ["build", "icons", "options", "styles"]) {
+for (const directory of ["build", "icons", "options", "styles", "results", "docs"]) {
   await cp(new URL(`${directory}/`, root), new URL(`${directory}/`, destination), {
     recursive: true,
   });

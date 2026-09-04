@@ -102,24 +102,17 @@ test("configured providers search concurrently, fail independently, and answer t
   releaseReadeck();
   await Promise.all([firstSearch, secondSearch]);
 
-  assert.deepEqual(
-    first.messages[0].providers.map((provider) => provider.source),
-    ["linkding", "readeck"],
-  );
-  assert.equal(first.messages[0].providers[0].results[0].title, "Linkding one");
-  assert.equal(
-    first.messages[0].providers[0].results[0].savedUrl,
-    "https://archive.example/one",
-  );
-  assert.equal(first.messages[0].providers[1].total, 21);
-  assert.equal(
-    first.messages[0].providers[1].results[0].annotations[0].text,
-    "Matched one",
-  );
-  assert.deepEqual(second.messages[0].providers.map((provider) => provider.source), ["readeck"]);
-  assert.equal(second.messages[0].warnings[0], "Linkding unavailable");
-  assert.equal(first.messages.length, 1);
-  assert.equal(second.messages.length, 1);
+  const firstResult = first.messages.at(-1);
+  const secondResult = second.messages.at(-1);
+  assert.deepEqual(firstResult.providers.map((provider) => provider.source), ["linkding", "readeck"]);
+  assert.equal(firstResult.providers[0].results[0].title, "Linkding one");
+  assert.equal(firstResult.providers[0].results[0].savedUrl, "https://archive.example/one");
+  assert.equal(firstResult.providers[1].total, 21);
+  assert.equal(firstResult.providers[1].results[0].annotations[0].text, "Matched one");
+  assert.deepEqual(secondResult.providers.map((provider) => provider.source), ["readeck"]);
+  assert.match(secondResult.warnings[0], /Linkding search failed/);
+  assert.equal(firstResult.done, true);
+  assert.equal(secondResult.done, true);
   const messages = JSON.stringify([...first.messages, ...second.messages]);
   assert.equal(messages.includes("link-token"), false);
   assert.equal(messages.includes("read-token"), false);

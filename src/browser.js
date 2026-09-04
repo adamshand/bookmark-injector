@@ -16,7 +16,12 @@ export function guardPort(port, runtime) {
   });
   return {
     postMessage(message) {
-      if (connected) port.postMessage(message);
+      if (!connected) return;
+      try { port.postMessage(message); } catch {
+        // A port may close before its onDisconnect listener is dispatched.
+        connected = false;
+        void runtime.lastError;
+      }
     },
   };
 }
