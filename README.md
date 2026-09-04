@@ -40,8 +40,8 @@ labels, bookmark notes, and annotation notes. The extension displays at most the
 matches and links to the full search in Readeck.
 
 Optional annotation enrichment loads highlights and notes for those matches. Requests are limited
-to three at a time, and the 100 most recent annotation results are cached for the lifetime of the
-background worker.
+to three at a time, and overlapping searches share in-flight requests without retaining stale
+annotation responses.
 
 ### Combined provider results
 

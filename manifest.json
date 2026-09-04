@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bookmark Injector for Linkding and Readeck",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Adds results from your Linkding and Readeck libraries to web search pages",
   "homepage_url": "https://github.com/adamshand/bookmark-injector",
   "browser_specific_settings": {

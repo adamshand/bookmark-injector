@@ -8,6 +8,19 @@ export function getStorage() {
   return getBrowser().storage.local;
 }
 
+export function guardPort(port, runtime) {
+  let connected = true;
+  port.onDisconnect.addListener(() => {
+    connected = false;
+    void runtime.lastError;
+  });
+  return {
+    postMessage(message) {
+      if (connected) port.postMessage(message);
+    },
+  };
+}
+
 export function openOptions() {
   getBrowser().runtime.openOptionsPage();
 }

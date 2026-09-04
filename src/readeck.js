@@ -1,6 +1,5 @@
 const DEFAULT_LIMIT = 10;
-const ANNOTATION_CACHE_LIMIT = 100;
-const annotationCache = new Map();
+const annotationRequests = new Map();
 
 function baseUrlOf(value) {
   const url = new URL(value);
@@ -27,6 +26,9 @@ export class ReadeckApi {
     url.searchParams.set("limit", String(limit));
     const response = await this.fetcher(url.toString(), {
       headers: { Authorization: `Bearer ${this.token}` },
+      // Readeck responses are marked private and may otherwise be reused from
+      // the browser's HTTP cache after bookmarks or annotations change.
+      cache: "no-store",
     });
     if (response.status !== 200) {
       throw new Error(`Error searching Readeck: ${response.statusText}`);
@@ -72,11 +74,14 @@ export class ReadeckApi {
   }
 
   async annotations(bookmarkId) {
-    const cacheKey = `${this.baseUrl}\0${this.token}\0${bookmarkId}`;
-    if (!annotationCache.has(cacheKey)) {
+    const requestKey = `${this.baseUrl}\0${this.token}\0${bookmarkId}`;
+    if (!annotationRequests.has(requestKey)) {
       const request = this.fetcher(
         `${this.baseUrl}/api/bookmarks/${encodeURIComponent(bookmarkId)}/annotations`,
-        { headers: { Authorization: `Bearer ${this.token}` } },
+        {
+          headers: { Authorization: `Bearer ${this.token}` },
+          cache: "no-store",
+        },
       ).then(async (response) => {
         if (response.status !== 200) {
           throw new Error(`Error loading Readeck annotations: ${response.statusText}`);
@@ -87,29 +92,36 @@ export class ReadeckApi {
           note: annotation.note || "",
         }));
       });
-      annotationCache.set(cacheKey, request);
-      if (annotationCache.size > ANNOTATION_CACHE_LIMIT) {
-        annotationCache.delete(annotationCache.keys().next().value);
-      }
+      annotationRequests.set(requestKey, request);
     }
 
+    const request = annotationRequests.get(requestKey);
     try {
-      return await annotationCache.get(cacheKey);
+      return await request;
     } catch {
-      annotationCache.delete(cacheKey);
       return [];
+    } finally {
+      if (annotationRequests.get(requestKey) === request) {
+        annotationRequests.delete(requestKey);
+      }
     }
   }
 
-  async enrichAnnotations(results) {
+  async enrichAnnotations(results, searchText) {
     const enriched = results.map((result) => ({ ...result }));
+    const query = String(searchText ?? "").trim().toLocaleLowerCase();
+    if (!query) return enriched;
+
     const queue = enriched.slice(0, DEFAULT_LIMIT);
     let next = 0;
     const worker = async () => {
       while (next < queue.length) {
         const index = next;
         next += 1;
-        queue[index].annotations = await this.annotations(queue[index].id);
+        const annotations = await this.annotations(queue[index].id);
+        queue[index].annotations = annotations.filter((annotation) =>
+          `${annotation.text}\n${annotation.note}`.toLocaleLowerCase().includes(query),
+        );
       }
     };
     await Promise.all(Array.from({ length: Math.min(3, queue.length) }, worker));

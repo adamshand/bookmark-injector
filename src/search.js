@@ -21,22 +21,6 @@ function publicConfiguration(config) {
   };
 }
 
-/// Keeps an asynchronous result from being posted after its tab enters the
-/// browser's back/forward cache. Reading `lastError` in the disconnect handler
-/// tells Chromium that this expected lifecycle event was handled.
-export function guardPort(port, runtime) {
-  let connected = true;
-  port.onDisconnect.addListener(() => {
-    connected = false;
-    void runtime.lastError;
-  });
-  return {
-    postMessage(message) {
-      if (connected) port.postMessage(message);
-    },
-  };
-}
-
 export function createSearchHandler({ getConfiguration, makeLinkding, makeReadeck }) {
   return async function handleSearch(port, request) {
     const config = await getConfiguration();
@@ -62,7 +46,7 @@ export function createSearchHandler({ getConfiguration, makeLinkding, makeReadec
           fullSearchUrl: fullSearchUrl(config.readeck, request.searchTerm, "search"),
           ...found,
           results: config.readeck.enrichAnnotations
-            ? await api.enrichAnnotations(found.results)
+            ? await api.enrichAnnotations(found.results, request.searchTerm)
             : found.results,
         })),
       );

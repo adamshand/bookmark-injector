@@ -1,6 +1,6 @@
 {
   "name": "bookmark-injector",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Adds results from Linkding and Readeck libraries to web search pages",
   "license": "MIT",
   "type": "module",

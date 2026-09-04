@@ -1,8 +1,8 @@
-import { getBrowser, openOptions } from "./browser.js";
+import { getBrowser, guardPort, openOptions } from "./browser.js";
 import { getConfiguration } from "./configuration.js";
 import { LinkdingApi } from "./linkding.js";
 import { ReadeckApi } from "./readeck.js";
-import { createSearchHandler, guardPort } from "./search.js";
+import { createSearchHandler } from "./search.js";
 
 const browser = getBrowser();
 const search = createSearchHandler({

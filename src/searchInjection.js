@@ -1,13 +1,9 @@
-import { getBrowser } from "./browser.js";
+import { getBrowser, guardPort } from "./browser.js";
 import { buildResultsPanelHtml } from "./render.js";
 
 const browser = getBrowser();
-const port = browser.runtime.connect({ name: "port-from-cs" });
-port.onDisconnect.addListener(() => {
-  // Chrome closes extension ports when a page enters its back/forward cache.
-  // Observing lastError marks that expected lifecycle event as handled.
-  void browser.runtime.lastError;
-});
+const connection = browser.runtime.connect({ name: "port-from-cs" });
+const port = guardPort(connection, browser.runtime);
 let searchEngine;
 if (document.location.hostname.match(/duckduckgo\.com/)) {
   searchEngine = "duckduckgo";
@@ -39,7 +35,7 @@ const sidebarSelectors = {
 
 // When the background script answers, construct the result box. Provider data
 // has already been normalized; search-engine placement remains upstream-shaped.
-port.onMessage.addListener(function (message) {
+connection.onMessage.addListener(function (message) {
   const parser = new DOMParser();
   let htmlString;
 

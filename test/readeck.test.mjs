@@ -58,6 +58,22 @@ test("Readeck search returns normalized bookmarks and the server total", async (
     "https://read.example/api/bookmarks?search=borrow+checker+%26+types&limit=10",
   );
   assert.equal(requests[0].options.headers.Authorization, "Bearer read-only-token");
+  assert.equal(requests[0].options.cache, "no-store");
+});
+
+test("annotation reads bypass the browser HTTP cache", async () => {
+  let requestOptions;
+  const api = new ReadeckApi(
+    { baseUrl: "https://read.example", token: "read-only-token" },
+    async (_url, options) => {
+      requestOptions = options;
+      return response([]);
+    },
+  );
+
+  await api.annotations("bookmark-1");
+
+  assert.equal(requestOptions.cache, "no-store");
 });
 
 test("the default browser fetch keeps its required global receiver", async () => {
@@ -98,7 +114,7 @@ test("connection testing uses a Bearer token without returning it", async () => 
   assert.equal(JSON.stringify(result).includes("private-token"), false);
 });
 
-test("annotation enrichment is bounded, concurrent, and cached", async () => {
+test("annotation enrichment is bounded, shares in-flight work, and stays fresh", async () => {
   let active = 0;
   let maximumActive = 0;
   const requested = [];
@@ -125,10 +141,14 @@ test("annotation enrichment is bounded, concurrent, and cached", async () => {
     annotations: [],
   }));
 
-  const enriched = await api.enrichAnnotations(results);
-  await new ReadeckApi(configuration, fetcher).enrichAnnotations(results);
+  const [enriched] = await Promise.all([
+    api.enrichAnnotations(results, "bookmark-"),
+    new ReadeckApi(configuration, fetcher).enrichAnnotations(results, "bookmark-"),
+  ]);
 
-  assert.equal(requested.length, 10, "more than ten bookmark annotation lists were fetched");
+  assert.equal(requested.length, 10, "concurrent searches did not share annotation requests");
+  await new ReadeckApi(configuration, fetcher).enrichAnnotations(results, "bookmark-");
+  assert.equal(requested.length, 20, "completed annotation responses were served stale");
   assert.ok(maximumActive <= 3, `used ${maximumActive} concurrent annotation requests`);
   assert.deepEqual(enriched[0].annotations, [
     {
@@ -137,4 +157,26 @@ test("annotation enrichment is bounded, concurrent, and cached", async () => {
     },
   ]);
   assert.deepEqual(enriched[10].annotations, []);
+});
+
+test("annotation enrichment only keeps highlights or notes matching the search text", async () => {
+  const api = new ReadeckApi(
+    { baseUrl: "https://filter.example", token: "read-only-token" },
+    async () =>
+      response([
+        { text: "Compaction changes the context", note: "" },
+        { text: "A handoff between agents", note: "Useful for COMPACTION" },
+        { text: "Unrelated highlighted text", note: "An unrelated note" },
+      ]),
+  );
+
+  const [result] = await api.enrichAnnotations(
+    [{ id: "bookmark-1", annotations: [] }],
+    "compaction",
+  );
+
+  assert.deepEqual(result.annotations, [
+    { text: "Compaction changes the context", note: "" },
+    { text: "A handoff between agents", note: "Useful for COMPACTION" },
+  ]);
 });

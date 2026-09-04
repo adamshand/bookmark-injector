@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createSearchHandler, guardPort } from "../src/search.js";
+import { guardPort } from "../src/browser.js";
+import { createSearchHandler } from "../src/search.js";
 
 function port() {
   return {
@@ -52,7 +53,7 @@ test("configured providers search concurrently, fail independently, and answer t
       enabled: true,
       baseUrl: "https://read.example",
       token: "read-token",
-      enrichAnnotations: false,
+      enrichAnnotations: true,
     },
     resultNum: 10,
   };
@@ -85,6 +86,12 @@ test("configured providers search concurrently, fail independently, and answer t
           results: [{ title: `Readeck ${term}` }],
         };
       },
+      async enrichAnnotations(results, term) {
+        return results.map((result) => ({
+          ...result,
+          annotations: [{ text: `Matched ${term}`, note: "" }],
+        }));
+      },
     }),
   });
   const first = port();
@@ -105,6 +112,10 @@ test("configured providers search concurrently, fail independently, and answer t
     "https://archive.example/one",
   );
   assert.equal(first.messages[0].providers[1].total, 21);
+  assert.equal(
+    first.messages[0].providers[1].results[0].annotations[0].text,
+    "Matched one",
+  );
   assert.deepEqual(second.messages[0].providers.map((provider) => provider.source), ["readeck"]);
   assert.equal(second.messages[0].warnings[0], "Linkding unavailable");
   assert.equal(first.messages.length, 1);
