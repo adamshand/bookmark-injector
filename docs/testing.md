@@ -4,7 +4,8 @@ The goal is protection of public behavior and trust boundaries, not a coverage p
 
 ## Running tests
 
-Use Node.js 24 LTS or newer and npm:
+Use Node.js 24 LTS or newer and npm. Browser tests also require `openssl` on PATH
+(available by default on macOS and the Ubuntu CI runner):
 
 ```sh
 npm ci
@@ -35,8 +36,10 @@ npx playwright show-trace test-results/browser/<failed-case>/trace.zip
 
 Each browser case uses a disposable profile and a local HTTPS server. No personal
 Chrome profile, real provider credentials, or live search engine is used. The
-checked-in TLS key is test-only material; certificate exceptions apply only to
-that disposable browser. Profiles and servers are cleaned up after each case.
+TLS certificate is generated outside the repository in an OS temporary directory;
+the files are removed immediately after being read into memory. No PEM files ship
+inside the unpacked extension. Certificate exceptions apply only to that disposable
+browser. Profiles and servers are cleaned up after each case.
 
 ## What the suites protect
 

@@ -24,7 +24,7 @@ export const test = base.extend({
         ignoreHTTPSErrors: true,
         args: [
           `--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`,
-          // Only this disposable test browser trusts the checked-in loopback certificate.
+          // Only this disposable test browser trusts the ephemeral loopback certificate.
           "--ignore-certificate-errors",
         ],
       });

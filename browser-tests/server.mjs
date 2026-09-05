@@ -1,6 +1,28 @@
 import https from "node:https";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { once, EventEmitter } from "node:events";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+async function temporaryCertificate() {
+  // The repository is also Chrome's unpacked-extension root. Even a harmless
+  // fixture PEM there triggers a bundled-key warning, so keep it entirely outside.
+  const directory = await mkdtemp(join(tmpdir(), "bookmark-test-tls-"));
+  try {
+    const key = join(directory, "key.pem");
+    const cert = join(directory, "cert.pem");
+    await promisify(execFile)("openssl", [
+      "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+      "-keyout", key, "-out", cert, "-days", "1", "-subj", "/CN=localhost",
+    ], { timeout: 15000 });
+    return { key: await readFile(key), cert: await readFile(cert) };
+  } finally {
+    // HTTPS consumes buffers; the files are unnecessary even while tests run.
+    await rm(directory, { recursive: true, force: true });
+  }
+}
 
 function deferred() {
   let resolve;
@@ -26,10 +48,7 @@ export async function startFixtureServer() {
   const gates = new Map();
   const offline = new Set();
   let origin;
-  const server = https.createServer({
-    key: await readFile(new URL("fixtures/localhost-key.pem", import.meta.url)),
-    cert: await readFile(new URL("fixtures/localhost-cert.pem", import.meta.url)),
-  }, async (req, res) => {
+  const server = https.createServer(await temporaryCertificate(), async (req, res) => {
     const url = new URL(req.url, origin);
     const annotation = url.pathname.match(/^\/readeck\/api\/bookmarks\/(.+)\/annotations$/);
     const source = annotation ? "annotations" : url.pathname === "/linkding/api/bookmarks/" ? "linkding"

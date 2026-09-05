@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
 import { firefoxManifest } from "../src/manifests.js";
@@ -7,6 +7,12 @@ import { GOOGLE_DOMAINS } from "../src/google-domains.js";
 import { engineForUrl } from "../src/engines.js";
 
 const root = new URL("../manifest.json", import.meta.url);
+
+test("browser fixtures do not ship PEM files inside the unpacked extension", async () => {
+  const files = await readdir(new URL("../browser-tests/", import.meta.url), { recursive: true });
+  assert.deepEqual(files.filter((file) => /\.(pem|key)$/i.test(file)), [],
+    "Generate TLS material outside the extension root; Chrome flags bundled key files");
+});
 
 test("the unpacked manifest is valid MV3 for Chrome and derives a Firefox background", async () => {
   const chrome = JSON.parse(await readFile(root, "utf8"));

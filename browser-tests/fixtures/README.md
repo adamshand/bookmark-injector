@@ -1,21 +1,17 @@
-# Loopback test certificate
+# Loopback test TLS
 
-`localhost-cert.pem` and `localhost-key.pem` are public, disposable test material.
-The private key is intentionally committed: it protects no account or real data.
-Never deploy it or add it to your system trust store.
+Do not store certificates or private-key files here. The repository is also the
+unpacked Chrome extension directory, and Chrome flags bundled PEM files even
+when they are harmless test fixtures.
 
-The browser suite binds its HTTPS fixture server to `127.0.0.1` on an ephemeral
-port. Only the suite's isolated Chromium process ignores certificate validation.
-The extension's production HTTPS requirement is unchanged.
+`browser-tests/server.mjs` uses OpenSSL to generate a fresh one-day certificate
+in an OS temporary directory outside the repository. It reads the key and
+certificate into memory, then immediately removes the temporary files. Cleanup
+also runs if certificate generation fails.
 
-To replace these files:
-
-```sh
-openssl req -x509 -newkey rsa:2048 -nodes \
-  -keyout browser-tests/fixtures/localhost-key.pem \
-  -out browser-tests/fixtures/localhost-cert.pem \
-  -days 3650 -subj '/CN=localhost'
-```
+Browser tests require `openssl` on PATH. Only the suite's isolated Chromium
+process ignores certificate validation; never add test certificates to a system
+trust store. The extension's production HTTPS requirement is unchanged.
 
 Browser API responses are synthetic scenarios controlled by tests. They are not
 the version-pinned upstream captures in `test/fixtures/providers/`.
