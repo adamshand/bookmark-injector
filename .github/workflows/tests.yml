@@ -1,0 +1,36 @@
+name: Regression tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: node scripts/prepare-firefox.mjs
+      - run: npx web-ext lint --source-dir dist/firefox
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure-diagnostics
+          path: test-results/browser/
+          if-no-files-found: ignore
+          retention-days: 7

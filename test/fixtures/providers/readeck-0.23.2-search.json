@@ -1,0 +1,88 @@
+{
+  "status": 200,
+  "headers": {
+    "cache-control": "private",
+    "content-type": "application/json; charset=utf-8",
+    "link": "<https://read.example/api/bookmarks?limit=10&offset=0&search=contract>; rel=\"first\"",
+    "total-count": "2"
+  },
+  "body": [
+    {
+      "id": "bookmarkPopulated00001",
+      "href": "https://read.example/api/bookmarks/bookmarkPopulated00001",
+      "created": "2026-01-01T00:00:00Z",
+      "updated": "2026-01-01T00:00:00Z",
+      "state": 0,
+      "loaded": true,
+      "url": "https://example.org/contract-populated",
+      "title": "Contract populated bookmark",
+      "site_name": "example.org",
+      "site": "example.org",
+      "authors": [],
+      "lang": "",
+      "text_direction": "",
+      "document_type": "article",
+      "type": "article",
+      "has_article": true,
+      "description": "A fixture description & details",
+      "note": "Contract bookmark note",
+      "is_deleted": false,
+      "is_marked": false,
+      "is_archived": false,
+      "labels": [
+        "contract",
+        "research"
+      ],
+      "read_progress": 0,
+      "resources": {
+        "article": {
+          "src": "https://read.example/api/bookmarks/bookmarkPopulated00001/article"
+        },
+        "log": {
+          "src": "https://read.example/api/bookmarks/bookmarkPopulated00001/x/log"
+        },
+        "props": {
+          "src": "https://read.example/api/bookmarks/bookmarkPopulated00001/x/props.json"
+        }
+      },
+      "word_count": 143
+    },
+    {
+      "id": "bookmarkMinimal0000002",
+      "href": "https://read.example/api/bookmarks/bookmarkMinimal0000002",
+      "created": "2026-01-01T00:00:00Z",
+      "updated": "2026-01-01T00:00:00Z",
+      "state": 0,
+      "loaded": true,
+      "url": "https://example.org/contract-minimal",
+      "title": "",
+      "site_name": "example.org",
+      "site": "example.org",
+      "authors": [],
+      "lang": "",
+      "text_direction": "",
+      "document_type": "article",
+      "type": "article",
+      "has_article": true,
+      "description": "",
+      "note": "",
+      "is_deleted": false,
+      "is_marked": false,
+      "is_archived": false,
+      "labels": [],
+      "read_progress": 0,
+      "resources": {
+        "article": {
+          "src": "https://read.example/api/bookmarks/bookmarkMinimal0000002/article"
+        },
+        "log": {
+          "src": "https://read.example/api/bookmarks/bookmarkMinimal0000002/x/log"
+        },
+        "props": {
+          "src": "https://read.example/api/bookmarks/bookmarkMinimal0000002/x/props.json"
+        }
+      },
+      "word_count": 143
+    }
+  ]
+}

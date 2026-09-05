@@ -1,0 +1,21 @@
+{
+  "status": 200,
+  "headers": {
+    "cache-control": "private",
+    "content-type": "application/json; charset=utf-8",
+    "link": "<https://read.example/bookmarks/bookmarkPopulated00001>; rel=\"alternate\"; type=\"text/html\""
+  },
+  "body": [
+    {
+      "id": "annotationFixture00001",
+      "start_selector": "section[1]/p[1]",
+      "start_offset": 0,
+      "end_selector": "section[1]/p[1]",
+      "end_offset": 23,
+      "color": "yellow",
+      "created": "2026-01-01T00:00:00Z",
+      "text": "Contract highlight text",
+      "note": "Contract annotation note"
+    }
+  ]
+}

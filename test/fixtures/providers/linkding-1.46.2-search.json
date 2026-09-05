@@ -1,0 +1,52 @@
+{
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "count": 2,
+    "next": null,
+    "previous": null,
+    "results": [
+      {
+        "id": 2,
+        "url": "https://example.org/contract-minimal",
+        "title": "",
+        "description": "",
+        "notes": "",
+        "web_archive_snapshot_url": "https://web.archive.org/web/20260101000000/https://example.org/contract-minimal",
+        "favicon_url": null,
+        "preview_image_url": null,
+        "is_archived": false,
+        "unread": false,
+        "shared": false,
+        "tag_names": [],
+        "date_added": "2026-01-01T00:00:00Z",
+        "date_modified": "2026-01-01T00:00:00Z",
+        "website_title": null,
+        "website_description": null
+      },
+      {
+        "id": 1,
+        "url": "https://example.org/contract-populated",
+        "title": "Contract populated bookmark",
+        "description": "A fixture description & details",
+        "notes": "",
+        "web_archive_snapshot_url": "https://web.archive.org/web/20260101000000/https://example.org/contract-populated",
+        "favicon_url": null,
+        "preview_image_url": null,
+        "is_archived": false,
+        "unread": false,
+        "shared": false,
+        "tag_names": [
+          "contract",
+          "research"
+        ],
+        "date_added": "2026-01-01T00:00:00Z",
+        "date_modified": "2026-01-01T00:00:00Z",
+        "website_title": null,
+        "website_description": null
+      }
+    ]
+  }
+}

@@ -106,7 +106,7 @@ disabled, or while a server is unavailable. **Test connections** is a separate, 
 
 ## Install from source
 
-Requirements: a supported Node.js LTS release and npm.
+Requirements: Node.js 24 LTS or newer and npm.
 
 ```sh
 git clone https://github.com/adamshand/bookmark-injector.git
@@ -135,11 +135,17 @@ The script tests and builds the extension, creates a Firefox-specific staging tr
 ## Development
 
 ```sh
-npm ci          # install exact dependencies
-npm test        # run behavioral tests
-npm run build   # build the unpacked Chrome extension
-./build.sh      # test, lint, and package for Firefox
+npm ci                         # install exact dependencies
+npm test                       # fast behavioral and provider-compatibility tests
+npx playwright install chromium # one-time browser test setup
+npm run test:browser            # build and test the actual extension in Chromium
+npm run test:all                # both test suites
+npm run build                  # build the unpacked Chrome extension
+./build.sh                     # fast tests, lint, and package for Firefox
 ```
+
+CI runs both suites and Firefox packaging lint. See [testing and the release checklist](docs/testing.md)
+for focused runs, failure traces, provider-fixture provenance, and Firefox/live-engine checks.
 
 Activate the repository-owned version hook once after cloning:
 

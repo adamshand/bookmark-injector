@@ -1,0 +1,11 @@
+{
+  "status": 401,
+  "headers": {
+    "cache-control": "private",
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "status": 401,
+    "message": "Unauthorized"
+  }
+}

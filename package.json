@@ -1,6 +1,6 @@
 {
   "name": "bookmark-injector",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "Adds results from Linkding and Readeck libraries to web search pages",
   "license": "MIT",
   "type": "module",
@@ -17,9 +17,12 @@
     "build": "rollup -c && sass scss/theme.scss build/searchInjection.css",
     "dev": "rollup -c -w && sass scss/theme.scss build/searchInjection.css",
     "test": "node --test",
+    "test:browser": "npm run build && playwright test",
+    "test:all": "npm test && npm run test:browser",
     "hooks:install": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-terser": "^1.0.0",
     "rollup": ">=4.59.2",
