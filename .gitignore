@@ -127,3 +127,4 @@ dist
 /styles/searchInjection.*
 /test-results/
 /playwright-report/
+/.pi/todos
