@@ -35,6 +35,7 @@ export function engineForUrl(value, searxOrigins = []) {
 export function isSearchPage(value, engine) {
   if (!engine) return false;
   const url = new URL(value);
+  if (engine === "google" && (url.searchParams.get("udm") === "2" || url.searchParams.get("tbm") === "isch")) return false;
   if (engine === "google" || engine === "brave") return /^\/search\/?$/.test(url.pathname);
   if (engine === "kagi") return ["/", "/search", "/search/"].includes(url.pathname);
   if (engine === "duckduckgo") return /^\/(?:html\/?|lite\/?)?$/.test(url.pathname);

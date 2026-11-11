@@ -3,8 +3,14 @@ html, body { margin: 0; padding: 0; background: transparent; font: 14px/1.45 sys
 * { box-sizing: border-box; }
 body { overflow-wrap: anywhere; }
 div#bookmark-list-container { width: 100%; margin: 0; padding: 16px; font-size: 14px; }
-div#bookmark-list-container #navbar #ld-logo { width: auto; flex: 1; font-size: 12px; }
-div#bookmark-list-container #navbar #ld-logo img { width: 24px; height: 24px; }
+div#bookmark-list-container #navbar #ld-logo { width: auto; flex: 1; font-size: 12px; overflow-wrap: normal; }
+div#bookmark-list-container #navbar #ld-logo img { width: 24px; height: 24px; flex-shrink: 0; }
+#ld-options { flex-shrink: 0; }
+@media (max-width: 360px) {
+  div#bookmark-list-container #navbar { flex-wrap: wrap; gap: 8px; }
+  div#bookmark-list-container #navbar #ld-logo { flex-basis: calc(100% - 40px); }
+  div#bookmark-list-container #navbar #results_amount { order: 1; flex: 0 0 100%; margin: 0; }
+}
 #results_amount { margin: 0 8px; font-size: 12px; }
 a { text-decoration: none; }
 a:hover { text-decoration: underline; }

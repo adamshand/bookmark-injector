@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import test from "node:test";
 import { searchPageKey } from "../src/searchIdentity.js";
+import { isSearchPage } from "../src/engines.js";
 import { guardPort, isContextInvalidated } from "../src/browser.js";
 
 test("search identity ignores tracking and fragments but preserves origin, route and query", () => {
@@ -13,6 +14,17 @@ test("search identity ignores tracking and fragments but preserves origin, route
     assert.notEqual(original, searchPageKey(url));
   }
   assert.notEqual(searchPageKey("https://search.example/search"), searchPageKey("https://search.example/search?q="));
+});
+
+test("Google Images is excluded and switching search modes changes identity", () => {
+  const regular = "https://www.google.com/search?q=flowers";
+  assert.equal(isSearchPage(regular, "google"), true);
+  for (const mode of ["udm=2", "tbm=isch"]) {
+    const images = `${regular}&${mode}`;
+    assert.equal(isSearchPage(images, "google"), false);
+    assert.notEqual(searchPageKey(regular), searchPageKey(images));
+  }
+  assert.equal(isSearchPage(`${regular}&udm=14`, "google"), true);
 });
 
 test("tracking rewrites retain the visible iframe and do not search a second time", async () => {
